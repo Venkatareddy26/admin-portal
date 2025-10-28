@@ -1,0 +1,25 @@
+{
+  "name": "pg-node-client",
+  "version": "1.0.0",
+  "description": "Node.js project connected to PostgreSQL (pgAdmin database)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "postgresql",
+    "pg",
+    "nodejs",
+    "database"
+  ],
+  "author": "Adarsh Arya",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "pg": "^8.16.3"
+  }
+}

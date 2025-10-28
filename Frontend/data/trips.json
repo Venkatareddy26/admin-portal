@@ -1,0 +1,38 @@
+[
+  {
+    "id": "trip_1760599471034",
+    "status": "pending",
+    "createdAt": "2025-10-16T07:24:31.034Z",
+    "timeline": [
+      {
+        "ts": "2025-10-16T07:24:31.034Z",
+        "status": "requested",
+        "user": "you@example.com"
+      }
+    ],
+    "destination": "E2E City",
+    "start": "2025-10-20",
+    "requester": {
+      "name": "E2E",
+      "email": "e2e@example.com"
+    }
+  },
+  {
+    "id": "trip_1760599463125",
+    "status": "pending",
+    "createdAt": "2025-10-16T07:24:23.125Z",
+    "timeline": [
+      {
+        "ts": "2025-10-16T07:24:23.125Z",
+        "status": "requested",
+        "user": "you@example.com"
+      }
+    ],
+    "destination": "E2E City",
+    "start": "2025-10-20",
+    "requester": {
+      "name": "E2E",
+      "email": "e2e@example.com"
+    }
+  }
+]

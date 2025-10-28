@@ -1,0 +1,16 @@
+[
+  {
+    "id": "notif_1760599471035",
+    "to": "ops@example.com",
+    "subject": "New trip request: E2E City",
+    "body": "Trip trip_1760599471034 requested by E2E",
+    "ts": "2025-10-16T07:24:31.035Z"
+  },
+  {
+    "id": "notif_1760599463125",
+    "to": "ops@example.com",
+    "subject": "New trip request: E2E City",
+    "body": "Trip trip_1760599463125 requested by E2E",
+    "ts": "2025-10-16T07:24:23.125Z"
+  }
+]

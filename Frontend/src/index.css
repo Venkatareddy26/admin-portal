@@ -1,0 +1,230 @@
+/* stylelint-disable at-rule-no-unknown */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+/* stylelint-enable at-rule-no-unknown */
+
+:root{
+	--bg:#F7F9FC;
+	--card:#FFFFFF;
+	--card-text:#0F172A;
+	--muted:#6B7280;
+	--primary:#2563EB;
+	--primary-600:#1D4ED8;
+	--accent:#06B6D4;
+	--danger:#DC2626;
+	--success:#059669;
+	--shadow: 0 6px 18px rgba(12,18,36,0.06);
+	--sidebar-bg: var(--card);
+	--sidebar-border: rgba(15,23,42,0.04);
+	--ease: cubic-bezier(.2,.8,.2,1);
+}
+:root[data-theme='light']{
+	--bg:#f8fafc;
+	--card:#ffffff;
+	--card-text:#0f172a;
+	--muted:#64748b;
+	--accent:#7c3aed;
+	--sidebar-bg: var(--card);
+	--sidebar-border: rgba(15,23,42,0.04);
+}
+
+:root[data-theme='dark']{
+	--bg:#0b1220;
+	--card:#0f1724;
+	/* force pure white body/text color in dark mode per request */
+	--card-text:#ffffff;
+	/* muted should be a translucent white for subtle text */
+	--muted: rgba(255,255,255,0.72);
+	--accent:#8b5cf6;
+	/* richer three-stop vertical gradient for depth */
+	--sidebar-bg: linear-gradient(180deg, #0b1622 0%, #071221 60%, #081221 100%);
+	--sidebar-border: rgba(255,255,255,0.04);
+}
+
+/* Ensure nearly all on-screen text becomes white in dark mode. This is a
+	 deliberate global override so components that use Tailwind utilities or
+	 inline classes also render white when `data-theme='dark'`. If you prefer a
+	 less aggressive change, we can remove the `*` rule and only override
+	 specific utility classes. */
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] body * {
+	color: var(--card-text) !important;
+}
+
+
+:root[data-theme='purple']{
+	--bg:#fbf8ff;
+	--card:#ffffff;
+	--card-text:#2a2540;
+	--muted:#7b6f90;
+	--accent:#7c3aed;
+}
+
+:root[data-theme='ocean']{
+	--bg:#e9fbff;
+	--card:#ffffff;
+	--card-text:#063241;
+	--muted:#3b7b85;
+	--accent:#06b6d4;
+}
+
+:root[data-theme='sunset']{
+	--bg:#fff7ed;
+	--card:#ffffff;
+	--card-text:#3b2f21;
+	--muted:#a66a3a;
+	--accent:#f97316;
+}
+
+/* Travel Neon theme: premium consumer-facing travel brand */
+:root[data-theme='neon']{
+	--bg:#0B1020;
+	--card:linear-gradient(180deg,#0F1724 0%, #0B1020 60%);
+	--card-text:#E6F0FF;
+	--muted:#94A3B8;
+	--primary:#7C5CFF;
+	--accent:#FF6B6B;
+	--glow: rgba(124,92,255,0.18);
+	--shadow: 0 10px 40px rgba(2,6,23,0.6);
+	--sidebar-bg: linear-gradient(180deg,#071221 0%, #081221 100%);
+	--sidebar-border: rgba(255,255,255,0.04);
+}
+html,body,#root{height:100%;}
+body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;background:var(--bg);color:var(--card-text)}
+.theme-btn{transition:background .12s ease, color .12s ease}
+.app-anim { --anim-ease: var(--ease); }
+*{transition:color .15s ease, background-color .15s ease}
+.app-root{padding:24px}
+.login-container{ width:360px; max-width:92%; box-sizing:border-box }
+.login-container input{ background:transparent }
+
+/* More explicit login container to match requested layout */
+.login-center-256{ width:256px; height:256px; display:flex; align-items:center; justify-content:center }
+/* demo helper removed */
+
+/* Exact 256x256 container per request */
+.container{ position:relative; width:256px; height:256px; display:flex; justify-content:center; align-items:center }
+.sidebar{width:220px;background:var(--sidebar-bg);border-radius:12px;padding:12px;border:1px solid var(--sidebar-border);box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), inset 0 -18px 30px rgba(0,0,0,0.25)}
+.sidebar.collapsed{width:72px}
+.sidebar.collapsed .nav-label{display:none}
+.sidebar.collapsed .nav-button{justify-content:center}
+.sidebar.collapsed .nav-icon{margin:0}
+.sidebar.collapsed .admin-info{display:none}
+.sidebar.collapsed .admin-profile{justify-content:center}
+.sidebar.collapsed .profile-menu{right:6px; width:200px}
+
+/* small helper to ensure icons are centered and consistent in collapsed mode */
+.sidebar .nav-icon{width:28px; display:inline-flex; align-items:center; justify-content:center}
+.sidebar .nav-label{flex:1}
+.admin-profile{width:100%; box-sizing:border-box}
+.admin-profile .admin-info{min-width:0; overflow:hidden}
+.admin-profile .admin-name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.admin-profile .admin-role{white-space:nowrap}
+.profile-menu{position:absolute; top:56px; right:12px; width:220px; z-index:9999; background:var(--card); border:1px solid var(--sidebar-border); border-radius:8px; box-shadow:var(--shadow); padding:8px; display:none; pointer-events:auto}
+.profile-menu.open{display:block}
+.profile-menu-header{display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid rgba(15,23,42,0.04)}
+.profile-avatar{width:48px; height:48px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--primary); color:white}
+.profile-menu-item{display:block; width:100%; padding:8px; text-align:left; border:none; background:transparent; cursor:pointer; position:relative; z-index:10000}
+.profile-menu-item:hover{background:rgba(15,23,42,0.03)}
+.profile-menu-divider{height:1px; background:rgba(15,23,42,0.03); margin:8px 0}
+.profile-menu .switch-role select{width:100%}
+
+/* Toggle button and backdrop for profile menu */
+.toggle-btn{background:transparent;border:none;padding:6px;border-radius:6px;cursor:pointer}
+.toggle-btn.profile-open{background:rgba(0,0,0,0.04)}
+.profile-backdrop{display:none; position:fixed; inset:0; z-index:9998; pointer-events:auto}
+.profile-backdrop.open{display:block}
+
+/* caret for profile menu (uses --caret-left set by JS) */
+.profile-caret{position:absolute; top:-8px; left:var(--caret-left,16px); width:14px; height:14px; transform:rotate(45deg); background:var(--card); border-left:1px solid rgba(15,23,42,0.04); border-top:1px solid rgba(15,23,42,0.04); box-shadow: var(--shadow);}
+.nav-button{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:none;background:transparent;width:100%;text-align:left}
+.nav-active{background:linear-gradient(90deg,#7c3aed,#a78bfa);color:white}
+.rounded-2xl{border-radius:16px}
+.kpi-card-clickable{cursor:pointer}
+.pie-wrap{background:transparent}
+
+/* Reusable elevated card style (matches sidebar elevation) */
+.elevated {
+	background: var(--card);
+	border-radius: 12px;
+	padding: 0.75rem;
+	border: 1px solid var(--sidebar-border);
+	box-shadow: var(--shadow);
+	transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .12s var(--ease);
+	will-change: transform, box-shadow;
+}
+.elevated:hover{
+	transform: translateY(-4px);
+	box-shadow: 0 18px 50px rgba(2,6,23,0.12);
+}
+.elevated:focus-within{ outline: none; box-shadow: 0 6px 28px rgba(124,58,237,0.06); }
+
+/* Button primitives */
+.btn{ display:inline-flex; align-items:center; gap:0.5rem; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid rgba(15,23,42,0.06); background:transparent; color:var(--card-text); cursor:pointer; transition: transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease); }
+.btn:focus-visible{ box-shadow: 0 0 0 4px rgba(37,99,235,0.12); outline: none; }
+.btn-primary{ background:var(--primary); color:white; border-color:transparent; box-shadow: 0 6px 18px rgba(37,99,235,0.12); }
+.btn-primary:hover{ transform: translateY(-2px); filter:brightness(.98); }
+
+/* Neon-specific hover glow (only if neon theme active) */
+:root[data-theme='neon'] .btn-primary:hover{
+	box-shadow: 0 8px 28px var(--glow), 0 2px 8px rgba(0,0,0,0.35);
+	transform: translateY(-4px) scale(1.02);
+}
+
+/* Neon card style utility */
+.card-neon{ background:var(--card); border-radius:12px; border:1px solid rgba(255,255,255,0.04); box-shadow: var(--shadow); color:var(--card-text); }
+
+/* Avatar and muted helpers use theme variables so they adapt per theme */
+.avatar-primary{ background:var(--primary); color: #fff; display:inline-flex; align-items:center; justify-content:center }
+.muted-text{ color:var(--muted) !important }
+.btn-ghost{ background:transparent; border:1px solid rgba(15,23,42,0.06); }
+
+@media (prefers-reduced-motion: reduce) {
+  .elevated, .btn, .btn-primary { transition: none !important; transform: none !important; }
+}
+.pie-tooltip{box-shadow:0 4px 18px rgba(0,0,0,0.18)}
+.f3d-bar-wrap{display:inline-flex;flex-direction:column;align-items:center;width:110px;margin-right:10px}
+.f3d-bar{width:80px;background:linear-gradient(180deg,#7c3aed,#5b21b6);border-radius:6px 6px 4px 4px;color:white;display:flex;align-items:flex-end;justify-content:center;padding:6px}
+.f3d-bar-top{height:6px;background:rgba(255,255,255,0.12);width:100%;border-top-left-radius:6px;border-top-right-radius:6px}
+.f3d-label{margin-top:6px;font-size:12px;color:var(--muted)}
+
+/* Card header and collapsible helpers (improved alignment) */
+.card-header{
+	display:flex;
+	align-items:center;
+	gap:12px;
+	padding:0.45rem 0;
+	margin-bottom:12px;
+	border-bottom:1px solid rgba(15,23,42,0.03);
+}
+.card-title{
+	font-weight:600;
+	font-size:1rem;
+	display:flex;
+	flex-direction:column;
+	line-height:1.05;
+}
+.card-title .card-subtitle{ font-size:12px; color:var(--muted); font-weight:400; margin-top:4px }
+.card-actions{ display:flex; align-items:center; gap:8px; margin-left:auto }
+/* ensure action controls are visually consistent */
+.card-actions > *{ height:36px; min-width:36px; display:inline-flex; align-items:center; justify-content:center }
+.card-actions .back-btn{ padding:6px 10px; border-radius:8px }
+.card-collapse{ background:transparent; border:none; padding:6px; border-radius:6px; cursor:pointer; color:var(--muted) }
+.card-collapse:hover{ background:rgba(15,23,42,0.03) }
+.card-body-collapsed{ display:none }
+.card-hint{ font-size:12px; color:var(--muted); margin-top:4px }
+
+/* Sticky helper: keeps small control cards visible when scrolling on wide screens */
+.sticky-card{ position: sticky; top: 20px; z-index: 40 }
+@media (max-width: 900px){ .sticky-card{ position: static; top: auto } }
+
+/* Donut hover / reduced-motion rules */
+.pie-wrap .pie-tooltip{pointer-events:none}
+.pie-wrap g{will-change:transform,opacity}
+.pie-wrap g:hover{filter:drop-shadow(0 6px 14px rgba(0,0,0,0.08))}
+
+@media (prefers-reduced-motion: reduce) {
+	.pie-wrap * { transition: none !important; animation: none !important; }
+}
+
