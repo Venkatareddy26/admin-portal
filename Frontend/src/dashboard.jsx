@@ -459,18 +459,49 @@ export default function TravelDashboard() {
 
             {/* Map & Widgets */}
             <section className="grid grid-cols-12 gap-6">
+              {/* Map Card */}
               <div className="col-span-8 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                <GlobalMap locations={trips.map(t => ({ name: t.destination, lat: 0, lng: 0, status: t.status }))} />
+                <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }}>🌍</div>
+                  <div>
+                    <h3 className="font-semibold text-slate-800">Global Travel Map</h3>
+                    <p className="text-xs text-gray-500">Interactive destination overview</p>
+                  </div>
+                </div>
+                <div style={{ height: 350 }}>
+                  <GlobalMap locations={trips.map(t => ({ name: t.destination, lat: 0, lng: 0, status: t.status }))} />
+                </div>
               </div>
 
-              <div className="col-span-4 space-y-6">
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                  <WidgetManager initial={visibleWidgets} onChange={setVisibleWidgets} />
+              {/* Widgets Column */}
+              <div className="col-span-4 space-y-4">
+                {/* Widget Configuration */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>⚙️</div>
+                    <div>
+                      <h3 className="font-semibold text-slate-800">Widget Settings</h3>
+                      <p className="text-xs text-gray-500">Customize your dashboard</p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <WidgetManager initial={visibleWidgets} onChange={setVisibleWidgets} />
+                  </div>
                 </div>
                 
+                {/* Risk Feed */}
                 {visibleWidgets.includes('riskFeed') && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                    <RiskFeed />
+                    <div className="p-4 border-b border-gray-100 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white' }}>⚠️</div>
+                      <div>
+                        <h3 className="font-semibold text-slate-800">Risk Alerts</h3>
+                        <p className="text-xs text-gray-500">Real-time travel advisories</p>
+                      </div>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto">
+                      <RiskFeed />
+                    </div>
                   </div>
                 )}
               </div>

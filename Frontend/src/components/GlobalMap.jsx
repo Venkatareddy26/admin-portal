@@ -12,27 +12,28 @@ export default function GlobalMap({ locations = [], width = '100%', height = 320
   }, []);
 
   return (
-    <div className="global-map elevated p-1" style={{ minHeight: `${height}px` }}>
-      <div className="text-sm font-semibold mb-2 px-3">Global travel map</div>
-      <div style={{ width: width, height: height }}>
-        <MapContainer center={center} zoom={2} scrollWheelZoom={false} style={{ width: '100%', height: '100%', borderRadius: 8 }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {(locations || []).map((loc) => (
-            <CircleMarker key={loc.id} center={[loc.lat, loc.lng]} radius={6 + Math.min(12, Math.log((loc.count||1)+1) * 3)} pathOptions={{ color: loc.color || '#7c3aed', fillOpacity: 0.92, weight: 1 }}>
-              <Popup>
-                <div style={{minWidth:160}}>
-                  <div style={{fontWeight:700}}>{loc.label}</div>
-                  <div className="text-sm text-muted">{loc.count || 0} trips</div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          ))}
-        </MapContainer>
-      </div>
-      <div className="mt-2 text-xs text-gray-500 px-3">Interactive OpenStreetMap tiles — pan & zoom enabled.</div>
+    <div className="global-map" style={{ width: width, height: '100%' }}>
+      <MapContainer center={center} zoom={2} scrollWheelZoom={true} style={{ width: '100%', height: '100%' }}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {(locations || []).map((loc, idx) => (
+          <CircleMarker 
+            key={loc.id || idx} 
+            center={[loc.lat || 0, loc.lng || 0]} 
+            radius={8} 
+            pathOptions={{ color: '#6366f1', fillColor: '#818cf8', fillOpacity: 0.8, weight: 2 }}
+          >
+            <Popup>
+              <div style={{minWidth:140}}>
+                <div style={{fontWeight:600, color:'#1e293b'}}>{loc.name || loc.label || 'Unknown'}</div>
+                <div style={{fontSize:12, color:'#64748b'}}>{loc.status || 'Active'}</div>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MapContainer>
     </div>
   );
 }

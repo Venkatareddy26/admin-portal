@@ -21,29 +21,25 @@ export default function WidgetManager({ onChange, initial }){
   }
 
   return (
-    <div className="widget-manager elevated p-3">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-semibold">Widget configuration</div>
-        <div className="text-xs text-gray-500">Saved locally</div>
-      </div>
-      <div className="space-y-2">
-        <label className="flex items-center justify-between">
-          <span>Trip frequency</span>
-          <input type="checkbox" checked={widgets.includes('tripFrequency')} onChange={() => toggle('tripFrequency')} />
+    <div className="widget-manager space-y-3">
+      {[
+        { id: 'tripFrequency', label: 'Trip frequency', icon: '📊' },
+        { id: 'topDestinations', label: 'Top destinations', icon: '📍' },
+        { id: 'riskFeed', label: 'Risk alerts', icon: '⚠️' },
+      ].map(item => (
+        <label key={item.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{item.icon}</span>
+            <span className="text-sm text-gray-700">{item.label}</span>
+          </div>
+          <input 
+            type="checkbox" 
+            checked={widgets.includes(item.id)} 
+            onChange={() => toggle(item.id)}
+            className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+          />
         </label>
-
-        <label className="flex items-center justify-between">
-          <span>Top destinations</span>
-          <input type="checkbox" checked={widgets.includes('topDestinations')} onChange={() => toggle('topDestinations')} />
-        </label>
-
-        <label className="flex items-center justify-between">
-          <span>Risk feed</span>
-          <input type="checkbox" checked={widgets.includes('riskFeed')} onChange={() => toggle('riskFeed')} />
-        </label>
-
-        {/* Compliance and Carbon removed from widget toggles */}
-      </div>
+      ))}
     </div>
   );
 }

@@ -22,25 +22,36 @@ export default function RiskFeed({ pollInterval = 15000 }){
     return () => { mounted = false; clearInterval(t); };
   }, [pollInterval]);
 
+  const severityColors = {
+    low: { bg: '#dcfce7', text: '#166534' },
+    moderate: { bg: '#fef3c7', text: '#92400e' },
+    high: { bg: '#fee2e2', text: '#991b1b' },
+  };
+
   return (
-    <div className="risk-feed elevated p-3">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-semibold">Real-time risk feed</div>
-        <div className="text-xs text-gray-500">{lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'}</div>
-      </div>
-      <div className="space-y-2 max-h-48 overflow-auto">
-        {items.map(it => (
-          <div key={it.id} className="p-2 elevated hover:bg-gray-50">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-medium">{it.summary}</div>
-                <div className="text-xs text-gray-500">{it.source} • {it.region}</div>
+    <div className="risk-feed p-4 space-y-3">
+      {items.map(it => {
+        const colors = severityColors[it.severity] || severityColors.moderate;
+        return (
+          <div key={it.id} className="p-3 rounded-lg border border-gray-100 hover:border-gray-200 transition-colors bg-gray-50">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-slate-800 leading-tight">{it.summary}</div>
+                <div className="text-xs text-gray-500 mt-1">{it.source} • {it.region}</div>
               </div>
-              <div className="text-xs font-semibold text-red-600">{it.severity}</div>
+              <span 
+                className="text-xs font-semibold px-2 py-1 rounded-full whitespace-nowrap"
+                style={{ backgroundColor: colors.bg, color: colors.text }}
+              >
+                {it.severity}
+              </span>
             </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
+      {items.length === 0 && (
+        <div className="text-center text-gray-400 text-sm py-4">No active alerts</div>
+      )}
     </div>
   );
 }
