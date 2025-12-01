@@ -36,7 +36,7 @@ const INITIAL_SUMMARY = {
 
 // reasonsData removed (sample/demo data). Charts will render from real data or remain empty until data arrives.
 
-const COLORS = ['#2d0636', '#5a2d64', '#8a417f', '#b46ca6', '#c79ac1', '#e1cbe0', '#f3e9f4', '#efe6f0', '#efe9f7'];
+const COLORS = ['#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#eef2ff', '#93c5fd', '#bae6fd', '#a7f3d0', '#fde68a'];
 
 export default function TravelDashboard() {
   const navigate = useNavigate();
@@ -735,7 +735,7 @@ export default function TravelDashboard() {
               <div className="col-span-5 elevated">
                 <div className="space-y-5">
                   <div
-                    className="bg-gradient-to-r from-purple-700 to-purple-600 text-white rounded-lg p-4 flex items-center justify-between kpi-card-clickable elevated"
+                    className="bg-gradient-to-r from-indigo-400 to-indigo-300 text-white rounded-lg p-4 flex items-center justify-between kpi-card-clickable elevated"
                     onClick={() => toggleExpand('flights') }
                     role="button"
                     tabIndex={0}
@@ -746,7 +746,7 @@ export default function TravelDashboard() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm">{(summary.airfare || 0).toLocaleString()}</div>
-                      <div className="text-xs mt-1"><span className="text-amber-300">{Math.round(((summary.flightsCount || 0) > 0 ? ((summary.flightsCount || 0) / Math.max(1, summary.trips || 1)) * 100 : 0))}% Business</span></div>
+                      <div className="text-xs mt-1"><span className="text-indigo-100">{Math.round(((summary.flightsCount || 0) > 0 ? ((summary.flightsCount || 0) / Math.max(1, summary.trips || 1)) * 100 : 0))}% Business</span></div>
                     </div>
                   </div>
                   {expandedCard === 'flights' && (
@@ -848,7 +848,7 @@ function TripFrequencyBarChart({ data = [] }) {
           <div className="flex items-end gap-3 h-32 w-full">
       {data.map((d) => (
         <div key={d.month} className="flex flex-col items-center flex-1">
-          <div className="w-7 rounded-t bg-purple-400" style={{ height: `${(d.count / max) * 100}%`, minHeight: 12 }}>
+          <div className="w-7 rounded-t bg-indigo-300" style={{ height: `${(d.count / max) * 100}%`, minHeight: 12 }}>
             <div className="sr-only">{d.count} trips</div>
           </div>
           <div className="text-xs text-gray-500 mt-1">{d.month}</div>
@@ -896,7 +896,7 @@ function Faux3DBarChart({ data }){
 // Top Destinations horizontal bar chart (simple, accessible, static SVG)
 function TopDestinationsChart({ data = [] }){
   // reuse DynamicPieChart for consistent look & interactions
-  const colors = ['#7c3aed', '#06b6d4', '#f59e0b', '#ef4444', '#10b981', '#c084fc', '#60a5fa'];
+  const colors = ['#818cf8', '#a5b4fc', '#c7d2fe', '#93c5fd', '#bae6fd', '#a7f3d0', '#fde68a'];
   const formatted = (data || []).map(d => ({ name: d.label, value: d.value }));
 
   return (
