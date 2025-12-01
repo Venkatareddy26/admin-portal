@@ -139,182 +139,243 @@ export default function Documents(){
   async function downloadAllInGroup(type){ const items = filteredGroups[type] || []; for(const d of items){ downloadDoc(d); await new Promise(r=>setTimeout(r,120)); } }
 
   return (
-    <div className="min-h-screen app-root p-8 font-sans text-gray-800">
-      <div className="flex gap-6 max-w-[1400px] mx-auto">
-        <main className="flex-1">
-          <div className="max-w-[1160px] mx-auto elevated p-6 shadow-lg">
-              <div className="card-header mb-4">
-                <div className="card-title">
-                  <h1 className="text-2xl font-semibold">Document & Compliance</h1>
-                  <div className="card-subtitle">Store passports, visas, vaccine certs, insurance & validate per policy</div>
-                </div>
-                <div className="card-actions">
-                  <button type="button" onClick={()=> navigate(-1)} className="back-btn px-3 py-2 border rounded text-sm">← Back</button>
-                  <button className="card-collapse" onClick={() => setCollapsedPanels(s => ({ ...s, main: !s.main }))}>{collapsedPanels.main ? 'Expand' : 'Collapse'}</button>
-                </div>
-              </div>
-
-            <div className="grid grid-cols-12 gap-6 items-start">
-              <aside className="col-span-3 elevated p-3 self-start">
-          <div className="card-header">
-            <div className="card-title">Employees</div>
-            <div className="card-actions"><button className="card-collapse" onClick={() => setCollapsedPanels(s => ({ ...s, employees: !s.employees }))}>{collapsedPanels.employees ? 'Expand' : 'Collapse'}</button></div>
+    <div className="min-h-screen font-sans" style={{backgroundColor:'var(--bg-color)', color:'var(--text-color)'}}>
+      <div className="max-w-[1200px] mx-auto p-6">
+        {/* Page Header */}
+        <header className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold" style={{color:'var(--text-color)'}}>Document & Compliance</h1>
+            <p className="text-sm mt-1" style={{color:'var(--text-muted)'}}>Store passports, visas, vaccine certs, insurance & validate per policy</p>
           </div>
-          <ul className="space-y-2 text-sm">
-            {employees.map(e => (
-              <li key={e.id}>
-                <button type="button" className={`w-full text-left px-2 py-1 rounded ${selectedEmployee===e.id ? 'bg-gray-100':''}`} onClick={()=> setSelectedEmployee(e.id)}>{e.name}</button>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4">
-            <h4 className="text-sm font-medium">Reminders</h4>
-            {reminders.length===0 && <div className="text-xs text-muted mt-2">No upcoming expiries</div>}
-            {reminders.map(r => (
-              <div key={r.id} className="text-xs border rounded p-2 mt-2">
-                <div><strong>{employees.find(x=>x.id===r.employeeId)?.name || '—'}</strong></div>
-                <div>{r.type} expires {new Date(r.expiry).toLocaleDateString()}</div>
-              </div>
-            ))}
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={()=> navigate(-1)} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>← Back</button>
           </div>
-        </aside>
+        </header>
 
-  <section className="col-span-6 elevated p-4 self-start">
-          <div className="card-header">
-            <div className="card-title">Documents</div>
-            <div className="card-actions"><button className="card-collapse" onClick={() => setCollapsedPanels(s => ({ ...s, documents: !s.documents }))}>{collapsedPanels.documents ? 'Expand' : 'Collapse'}</button></div>
-          </div>
-          <div className={collapsedPanels.documents ? 'card-body-collapsed' : ''}>
-          {!selectedEmployee && <div className="text-sm text-gray-500">Select an employee to manage documents</div>}
-          {selectedEmployee && (
-            <div>
-              <div className="sticky-card">
-                <DocSearch filterText={filterText} setFilterText={setFilterText} sortBy={sortBy} setSortBy={setSortBy} showExpiringOnly={showExpiringOnly} setShowExpiringOnly={setShowExpiringOnly} />
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left Sidebar - Employees */}
+          <aside className="col-span-12 lg:col-span-3">
+            <div className="rounded-xl p-5 sticky top-6" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Employees</h3>
+                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, employees: !s.employees }))}>{collapsedPanels.employees ? 'Expand' : 'Collapse'}</button>
               </div>
-              <div className="mt-3">
-                {/* document type summary */}
-                <div className="flex items-center gap-2 text-sm">
-                  {(() => { const empDocs = docs.filter(d=> d.employeeId===selectedEmployee); const counts = empDocs.reduce((acc,d)=> { acc[d.type] = (acc[d.type]||0)+1; return acc; }, {}); return Object.entries(counts).length===0 ? <div className="text-xs text-muted">No documents uploaded</div> : Object.entries(counts).map(([t,c]) => <div key={t} className="px-2 py-1 text-xs rounded bg-gray-100">{t}: {c}</div>); })()}
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="flex gap-2">
-                  <input type="file" id="docfile" className="border p-2 rounded" onChange={(e)=>{ const f = e.target.files && e.target.files[0]; if(!f) return; handleFileUpload(f, { employeeId: selectedEmployee, type: uploadType || 'other', expiry: uploadExpiry || null, notes: uploadNotes || '' }); e.target.value = null; setUploadNotes(''); setUploadExpiry(''); }} />
-                  <select value={uploadType} onChange={e=> setUploadType(e.target.value)} className="border p-2 rounded">
-                    <option value="passport">Passport</option>
-                    <option value="visa">Visa</option>
-                    <option value="vaccine">Vaccine</option>
-                    <option value="insurance">Insurance</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-                <div className="flex gap-2">
-                  <input placeholder="Expiry (YYYY-MM-DD)" value={uploadExpiry} onChange={e=> setUploadExpiry(e.target.value)} className="border p-2 rounded" />
-                  <input placeholder="Notes" value={uploadNotes} onChange={e=> setUploadNotes(e.target.value)} className="border p-2 rounded" />
-                </div>
-                <div>
-                  <button type="button" className="px-3 py-2 border rounded" onClick={()=>{ const dest = prompt('Destination name to require docs for (e.g., India)'); if(!dest) return; const types = prompt('Required types (comma separated, e.g., passport,visa)'); addPolicy(dest, (types||'').split(',').map(s=>s.trim()).filter(Boolean)); alert('Policy saved'); }}>Add policy</button>
-                </div>
-              </div>
+              
+              <div className={collapsedPanels.employees ? 'hidden' : ''}>
+                {employees.length === 0 ? (
+                  <div className="text-sm py-4 text-center" style={{color:'var(--text-muted)'}}>No employees found</div>
+                ) : (
+                  <ul className="space-y-1">
+                    {employees.map(e => (
+                      <li key={e.id}>
+                        <button 
+                          type="button" 
+                          className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+                          style={{
+                            backgroundColor: selectedEmployee===e.id ? 'rgba(99,102,241,0.1)' : 'transparent',
+                            color: selectedEmployee===e.id ? 'var(--primary-color)' : 'var(--text-color)',
+                            fontWeight: selectedEmployee===e.id ? '500' : '400'
+                          }}
+                          onClick={()=> setSelectedEmployee(e.id)}
+                        >
+                          {e.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
-              <div className="mt-4 space-y-4">
-                {Object.keys(filteredGroups).length === 0 && <div className="text-xs text-muted">No documents uploaded or match filters</div>}
-                {Object.entries(filteredGroups).map(([type, items]) => (
-                  <DocGroup key={type} type={type} items={items} collapsed={collapsedGroups[type]} onToggle={t=> toggleGroup(t)} onDownloadAll={downloadAllInGroup} onDownload={downloadDoc} onSign={(d)=> { setSignTargetDoc(d.id); setShowSignModal(true); }} onDelete={(d)=> setDocs(s => s.filter(x=>x.id!==d.id))} onPreview={openPreview} />
-                ))}
+                {/* Reminders Section */}
+                <div className="mt-6 pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
+                  <h4 className="text-sm font-medium mb-3" style={{color:'var(--text-color)'}}>Reminders</h4>
+                  {reminders.length===0 ? (
+                    <div className="text-xs py-2" style={{color:'var(--text-muted)'}}>No upcoming expiries</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {reminders.map(r => (
+                        <div key={r.id} className="text-xs rounded-lg p-3" style={{backgroundColor:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.2)'}}>
+                          <div className="font-medium" style={{color:'var(--text-color)'}}>{employees.find(x=>x.id===r.employeeId)?.name || '—'}</div>
+                          <div style={{color:'#d97706'}}>{r.type} expires {new Date(r.expiry).toLocaleDateString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          )}
-          </div>
-  </section>
+          </aside>
 
-  <aside className="col-span-3 elevated p-3 self-start">
-          <div className="card-header">
-            <div className="card-title">Trips & Validation</div>
-            <div className="card-actions"><button className="card-collapse" onClick={() => setCollapsedPanels(s => ({ ...s, tripsPanel: !s.tripsPanel }))}>{collapsedPanels.tripsPanel ? 'Expand' : 'Collapse'}</button></div>
-          </div>
-          <div className={collapsedPanels.tripsPanel ? 'card-body-collapsed' : ''}>
-          <div className="mt-2">
-            <select value={selectedTrip} onChange={e=> setSelectedTrip(e.target.value)} className="w-full border p-2 rounded text-sm">
-              <option value="">Select trip (optional)</option>
-              {trips.map(t => <option key={t.id} value={t.id}>{t.title || t.id}</option>)}
-            </select>
-            {selectedTrip && (
-              <div className="mt-3 text-sm">
-                <div className="font-medium">Trip details</div>
-                <div className="text-xs text-muted mt-1">Validation status:</div>
-                <div className="mt-2">
-                  {(() => { const v = validateTrip(selectedTrip); return v.ok ? <div className="text-green-700">OK • All required docs present</div> : <div className="text-red-600">Blocked • Missing: {v.missing.join(', ')}</div> })()}
-                </div>
-                <div className="mt-3">
-                  <div className="text-xs font-medium">Attach documents to trip</div>
-                  <div className="mt-2 space-y-2">
-                    {docs.filter(d=> d.employeeId===selectedEmployee).map(d => (
-                      <div key={d.id} className="flex items-center justify-between text-sm">
-                        <div>{d.type} — {d.filename}</div>
-                        <div>
-                          <button type="button" className="px-2 py-0.5 border rounded text-xs" onClick={()=> attachDocToTrip(d.id, selectedTrip)}>Attach</button>
+          {/* Center - Documents */}
+          <section className="col-span-12 lg:col-span-6">
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Documents</h3>
+                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, documents: !s.documents }))}>{collapsedPanels.documents ? 'Expand' : 'Collapse'}</button>
+              </div>
+              
+              <div className={collapsedPanels.documents ? 'hidden' : ''}>
+                {!selectedEmployee ? (
+                  <div className="text-sm py-8 text-center" style={{color:'var(--text-muted)'}}>
+                    <div className="text-3xl mb-2">📄</div>
+                    Select an employee to manage documents
+                  </div>
+                ) : (
+                  <div>
+                    <div className="sticky-card">
+                      <DocSearch filterText={filterText} setFilterText={setFilterText} sortBy={sortBy} setSortBy={setSortBy} showExpiringOnly={showExpiringOnly} setShowExpiringOnly={setShowExpiringOnly} />
+                    </div>
+                    
+                    {/* Document type summary */}
+                    <div className="mt-4 flex items-center gap-2 flex-wrap">
+                      {(() => { 
+                        const empDocs = docs.filter(d=> d.employeeId===selectedEmployee); 
+                        const counts = empDocs.reduce((acc,d)=> { acc[d.type] = (acc[d.type]||0)+1; return acc; }, {}); 
+                        return Object.entries(counts).length===0 
+                          ? <div className="text-xs" style={{color:'var(--text-muted)'}}>No documents uploaded</div> 
+                          : Object.entries(counts).map(([t,c]) => (
+                            <span key={t} className="px-2 py-1 text-xs rounded-full font-medium" style={{backgroundColor:'rgba(99,102,241,0.1)', color:'var(--primary-color)'}}>{t}: {c}</span>
+                          )); 
+                      })()}
+                    </div>
+
+                    {/* Upload Section */}
+                    <div className="mt-4 p-4 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.03)', border:'1px dashed var(--border-color)'}}>
+                      <div className="text-xs font-medium mb-3" style={{color:'var(--text-muted)'}}>Upload New Document</div>
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input type="file" id="docfile" className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} onChange={(e)=>{ const f = e.target.files && e.target.files[0]; if(!f) return; handleFileUpload(f, { employeeId: selectedEmployee, type: uploadType || 'other', expiry: uploadExpiry || null, notes: uploadNotes || '' }); e.target.value = null; setUploadNotes(''); setUploadExpiry(''); }} />
+                          <select value={uploadType} onChange={e=> setUploadType(e.target.value)} className="text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', minWidth:'120px'}}>
+                            <option value="passport">Passport</option>
+                            <option value="visa">Visa</option>
+                            <option value="vaccine">Vaccine</option>
+                            <option value="insurance">Insurance</option>
+                            <option value="other">Other</option>
+                          </select>
                         </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input type="date" placeholder="Expiry date" value={uploadExpiry} onChange={e=> setUploadExpiry(e.target.value)} className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} />
+                          <input placeholder="Notes (optional)" value={uploadNotes} onChange={e=> setUploadNotes(e.target.value)} className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Document Groups */}
+                    <div className="mt-4 space-y-4">
+                      {Object.keys(filteredGroups).length === 0 && <div className="text-xs py-4 text-center" style={{color:'var(--text-muted)'}}>No documents uploaded or match filters</div>}
+                      {Object.entries(filteredGroups).map(([type, items]) => (
+                        <DocGroup key={type} type={type} items={items} collapsed={collapsedGroups[type]} onToggle={t=> toggleGroup(t)} onDownloadAll={downloadAllInGroup} onDownload={downloadDoc} onSign={(d)=> { setSignTargetDoc(d.id); setShowSignModal(true); }} onDelete={(d)=> setDocs(s => s.filter(x=>x.id!==d.id))} onPreview={openPreview} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Right Sidebar - Trips & Validation */}
+          <aside className="col-span-12 lg:col-span-3">
+            <div className="rounded-xl p-5 sticky top-6" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Trips & Validation</h3>
+                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, tripsPanel: !s.tripsPanel }))}>{collapsedPanels.tripsPanel ? 'Expand' : 'Collapse'}</button>
+              </div>
+              
+              <div className={collapsedPanels.tripsPanel ? 'hidden' : ''}>
+                <select value={selectedTrip} onChange={e=> setSelectedTrip(e.target.value)} className="w-full text-sm rounded-lg p-2.5" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}}>
+                  <option value="">Select trip (optional)</option>
+                  {trips.map(t => <option key={t.id} value={t.id}>{t.title || t.id}</option>)}
+                </select>
+                
+                {selectedTrip && (
+                  <div className="mt-4 p-3 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.03)'}}>
+                    <div className="text-sm font-medium mb-2" style={{color:'var(--text-color)'}}>Trip details</div>
+                    <div className="text-xs mb-2" style={{color:'var(--text-muted)'}}>Validation status:</div>
+                    <div className="mb-3">
+                      {(() => { 
+                        const v = validateTrip(selectedTrip); 
+                        return v.ok 
+                          ? <div className="text-sm font-medium px-3 py-2 rounded-lg" style={{backgroundColor:'rgba(16,185,129,0.1)', color:'#059669'}}>✓ All required docs present</div> 
+                          : <div className="text-sm font-medium px-3 py-2 rounded-lg" style={{backgroundColor:'rgba(239,68,68,0.1)', color:'#dc2626'}}>✗ Missing: {v.missing.join(', ')}</div> 
+                      })()}
+                    </div>
+                    <div className="mt-3 pt-3" style={{borderTop:'1px solid var(--border-color)'}}>
+                      <div className="text-xs font-medium mb-2" style={{color:'var(--text-muted)'}}>Attach documents to trip</div>
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {docs.filter(d=> d.employeeId===selectedEmployee).map(d => (
+                          <div key={d.id} className="flex items-center justify-between text-xs p-2 rounded" style={{backgroundColor:'var(--card-bg)'}}>
+                            <div className="truncate flex-1 mr-2" style={{color:'var(--text-color)'}}>{d.type} — {d.filename}</div>
+                            <button type="button" className="px-2 py-1 rounded text-xs font-medium transition-colors" style={{backgroundColor:'var(--primary-color)', color:'white'}} onClick={()=> attachDocToTrip(d.id, selectedTrip)}>Attach</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Policies Section */}
+                <div className="mt-6 pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium" style={{color:'var(--text-color)'}}>Policies</h4>
+                    <button type="button" className="text-xs px-2 py-1 rounded-lg font-medium" style={{backgroundColor:'var(--primary-color)', color:'white'}} onClick={()=>{ const dest = prompt('Destination name to require docs for (e.g., India)'); if(!dest) return; const types = prompt('Required types (comma separated, e.g., passport,visa)'); addPolicy(dest, (types||'').split(',').map(s=>s.trim()).filter(Boolean)); }}>+ Add</button>
+                  </div>
+                  <div className="text-xs mb-2" style={{color:'var(--text-muted)'}}>Destination → required types</div>
+                  <div className="space-y-2">
+                    {Object.keys(policies).length === 0 && <div className="text-xs py-2" style={{color:'var(--text-muted)'}}>No policies defined</div>}
+                    {Object.entries(policies).map(([dest, types]) => (
+                      <div key={dest} className="flex items-center justify-between text-xs p-2 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.05)'}}>
+                        <div className="font-medium" style={{color:'var(--text-color)'}}>{dest}</div>
+                        <div style={{color:'var(--text-muted)'}}>{types.join(', ')}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-          <div className="mt-4">
-            <h4 className="font-medium">Policies</h4>
-            <div className="text-xs text-muted mt-1">Destination → required types</div>
-            <div className="mt-2 space-y-2 text-sm">
-              {Object.keys(policies).length === 0 && <div className="text-xs text-muted">No policies defined</div>}
-              {Object.entries(policies).map(([dest, types]) => (
-                <div key={dest} className="flex items-center justify-between">
-                  <div>{dest}</div>
-                  <div className="text-xs text-muted">{types.join(', ')}</div>
-                </div>
-              ))}
             </div>
-          </div>
-          </div>
-        </aside>
-      </div>
-
-      {showSignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/40" onClick={()=> setShowSignModal(false)} />
-          <div className="elevated p-4 rounded z-60" style={{width:520}}>
-            <h4 className="font-semibold">Sign document</h4>
-            <div className="mt-2">
-              <canvas ref={canvasRef} width={480} height={160} style={{border:'1px solid #ddd', borderRadius:6}} onMouseDown={(e)=>{ isDrawing.current=true; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo(e.clientX-rect.left, e.clientY-rect.top); }} onMouseUp={()=>{ isDrawing.current=false; }} onMouseMove={(e)=>{ if(!isDrawing.current) return; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo(e.clientX-rect.left, e.clientY-rect.top); ctx.stroke(); }} />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button type="button" className="px-3 py-1 border rounded" onClick={()=>{ const c=canvasRef.current; const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }}>Clear</button>
-              <button type="button" className="px-3 py-1 bg-purple-600 text-white rounded" onClick={()=>{ const c=canvasRef.current; const data=c.toDataURL('image/png'); if(signTargetDoc){ setDocs(s=> s.map(d => d.id===signTargetDoc ? ({ ...d, signed:true, signature:data, signedAt: new Date().toISOString() }) : d)); } setShowSignModal(false); setSignTargetDoc(null); }}>Save signature</button>
-              <button type="button" className="px-3 py-1 border rounded" onClick={()=> { setShowSignModal(false); setSignTargetDoc(null); }}>Cancel</button>
-            </div>
-          </div>
+          </aside>
         </div>
-      )}
-      {previewDoc && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={closePreview} />
-          <div className="elevated p-4 rounded z-70 bg-white max-w-[80%] max-h-[80%] overflow-auto">
-            <div className="flex items-center justify-between mb-2">
-              <div className="font-semibold">{previewDoc.filename}</div>
-              <div>
-                <button className="px-2 py-1 border rounded mr-2" onClick={()=> downloadDoc(previewDoc)}>Download</button>
-                <button className="px-2 py-1 border rounded" onClick={closePreview}>Close</button>
+
+        {/* Sign Modal */}
+        {showSignModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={()=> setShowSignModal(false)} />
+            <div className="relative rounded-xl p-6 w-full max-w-lg" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
+              <h4 className="font-semibold text-lg mb-4" style={{color:'var(--text-color)'}}>Sign Document</h4>
+              <div className="rounded-lg overflow-hidden" style={{border:'1px solid var(--border-color)'}}>
+                <canvas ref={canvasRef} width={480} height={160} style={{width:'100%', height:'160px', backgroundColor:'#fafafa'}} onMouseDown={(e)=>{ isDrawing.current=true; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo(e.clientX-rect.left, e.clientY-rect.top); }} onMouseUp={()=>{ isDrawing.current=false; }} onMouseMove={(e)=>{ if(!isDrawing.current) return; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo(e.clientX-rect.left, e.clientY-rect.top); ctx.stroke(); }} />
+              </div>
+              <p className="text-xs mt-2 mb-4" style={{color:'var(--text-muted)'}}>Draw your signature above</p>
+              <div className="flex gap-2 justify-end">
+                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=>{ const c=canvasRef.current; const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }}>Clear</button>
+                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=> { setShowSignModal(false); setSignTargetDoc(null); }}>Cancel</button>
+                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium text-white" style={{backgroundColor:'var(--primary-color)'}} onClick={()=>{ const c=canvasRef.current; const data=c.toDataURL('image/png'); if(signTargetDoc){ setDocs(s=> s.map(d => d.id===signTargetDoc ? ({ ...d, signed:true, signature:data, signedAt: new Date().toISOString() }) : d)); } setShowSignModal(false); setSignTargetDoc(null); }}>Save Signature</button>
               </div>
             </div>
-            <div>
-              { (previewDoc.dataUrl || '').startsWith('data:image/') ? <img src={previewDoc.dataUrl} alt={previewDoc.filename} style={{maxWidth:'100%'}}/> : <div className="text-sm">Preview not available for this file type.</div> }
+          </div>
+        )}
+
+        {/* Preview Modal */}
+        {previewDoc && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={closePreview} />
+            <div className="relative rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-auto" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="font-semibold" style={{color:'var(--text-color)'}}>{previewDoc.filename}</div>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=> downloadDoc(previewDoc)}>Download</button>
+                  <button className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={closePreview}>Close</button>
+                </div>
+              </div>
+              <div className="rounded-lg overflow-hidden" style={{border:'1px solid var(--border-color)'}}>
+                { (previewDoc.dataUrl || '').startsWith('data:image/') 
+                  ? <img src={previewDoc.dataUrl} alt={previewDoc.filename} style={{maxWidth:'100%', display:'block'}}/> 
+                  : <div className="text-sm p-8 text-center" style={{color:'var(--text-muted)'}}>Preview not available for this file type.</div> 
+                }
+              </div>
             </div>
           </div>
-        </div>
-      )}
-        </div>
-      </main>
+        )}
+      </div>
     </div>
-  </div>
   );
 }

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Reports from './reports.jsx';
 import LoginPage from './login.jsx';
+import RegisterPage from './register.jsx';
 import './index.css';
 import TravelDashboard from './dashboard.jsx';
 import Analytics from './analytics.jsx';
@@ -22,6 +23,7 @@ function AppRoutes(){
 	return (
 	    <Routes>
 		    <Route path="/login" element={<LoginPage />} />
+		    <Route path="/register" element={<RegisterPage />} />
 		    <Route path="/dashboard" element={isAuthed ? <TravelDashboard /> : <Navigate to="/login" replace />} />
 		    <Route path="/" element={<Navigate to="/login" replace />} />
 			<Route path="/policy" element={isAuthed ? <PolicyBuilder /> : <Navigate to="/login" replace />} />
@@ -33,7 +35,7 @@ function AppRoutes(){
 			<Route path="/expense" element={isAuthed ? <ExpensePage /> : <Navigate to="/login" replace />} />
 			<Route path="/documents" element={isAuthed ? <Documents /> : <Navigate to="/login" replace />} />
 			<Route path="/analytics" element={isAuthed ? <Analytics /> : <Navigate to="/login" replace />} />
-
+			<Route path="*" element={<Navigate to="/login" replace />} />
 		</Routes>
 	);
 }

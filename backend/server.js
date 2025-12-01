@@ -11,6 +11,8 @@ import policyRoutes from "./routes/policyRoutes.js";
 import riskRoutes from "./routes/riskRoutes.js";
 import tripsRoutes from "./routes/tripsRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import kpiRoutes from "./routes/kpiRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -22,15 +24,17 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/documents", documentsRoutes);
 app.use("/api/expense", expenseRoutes);
+app.use("/api/expenses", expenseRoutes); // alias
 app.use("/api/policy", policyRoutes);
 app.use("/api/risk", riskRoutes);
 app.use("/api/trips", tripsRoutes);
-// user profile routes (photo upload, name update)
 app.use("/api/user", userRoutes);
+app.use("/api/kpi", kpiRoutes);
 
 // serve uploaded files
 app.use('/uploads', express.static('uploads'));

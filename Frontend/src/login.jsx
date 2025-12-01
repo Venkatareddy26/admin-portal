@@ -8,7 +8,8 @@ export default function LoginPage(){
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const API_BASE = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:4001';
+  // Use relative URL to leverage Vite proxy
+  const API_BASE = '';
 
   useEffect(() => {
     try{
@@ -39,7 +40,7 @@ export default function LoginPage(){
           const userObj = serverUser ? serverUser : { name: email.split('@')[0] || email, email };
           localStorage.setItem('currentUser', JSON.stringify(userObj));
         }catch(e){}
-        try{ localStorage.setItem('currentRole', role); }catch(e){}
+        try{ localStorage.setItem('currentRole', serverUser?.role || role); }catch(e){}
         navigate('/dashboard');
       } else {
         setError('Login succeeded but no token returned');
@@ -49,30 +50,10 @@ export default function LoginPage(){
       setError(`Login failed (network) — unable to reach ${API_BASE}`);
     }
   }
-    // Demo helper: prefill demo credentials and perform a client-side demo login
-  function useDemo(){
-    const demoEmail = 'demo@demo.com';
-    const demoPassword = 'demo123';
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    // perform client-side demo auth (no backend required) so dev can access dashboard
-    try{
-      const token = 'demo-token';
-      const user = { id: 'demo', name: 'Demo User', email: demoEmail };
-      localStorage.setItem('app_token', token);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      localStorage.setItem('currentRole', 'employee');
-      navigate('/dashboard');
-    }catch(e){ console.warn('demo login failed', e); setError('Demo login failed'); }
-  }
-
-
-
-
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-      <div className="container elevated p-4 rounded flex flex-col items-center" style={{ boxSizing: 'border-box' }}>
-        <h2 className="text-2xl font-semibold mb-4">Sign in</h2>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', padding: '20px' }}>
+      <div className="container elevated rounded" style={{ padding: '24px', boxSizing: 'border-box' }}>
+        <h2 className="text-2xl font-semibold mb-4 text-center">Sign in</h2>
         <form onSubmit={submit} className="space-y-3 w-full">
           <div>
             <label className="text-sm">Email</label>
@@ -95,16 +76,9 @@ export default function LoginPage(){
             <button className="btn btn-primary" type="submit">Sign in</button>
           </div>
           <div className="text-xs text-muted mt-2">
-            Don't have an account? <button type="button" className="text-sm text-blue-600 underline" onClick={() => navigate('/settings')}>Create one</button>
+            Don't have an account? <button type="button" className="text-sm text-blue-600 underline" onClick={() => navigate('/register')}>Create one</button>
           </div>
         </form>
-        <div style={{ marginTop: 8, width: '100%' }}>
-          <div className="text-xs text-muted mb-2">If your API server isn't running you can use a demo account to continue.</div>
-          <div className="flex items-center gap-2 mt-2">
-            <button className="btn btn-secondary text-sm" onClick={useDemo} type="button">Use demo account</button>
-            <div className="text-xs text-muted">API: <span title={API_BASE}>{API_BASE}</span></div>
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -12,8 +12,8 @@ import ProfileMenu from './components/ProfileMenu';
 import KpiCard from './components/KpiCard';
 
 
-// API base - prefers runtime override, then Vite env, then default to local mock server
-const API_BASE = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:4001';
+// Use relative URL to leverage Vite proxy
+const API_BASE = '';
 
 // TravelDashboard.jsx - cleaned and fixed structure
 
@@ -64,6 +64,10 @@ export default function TravelDashboard() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [summary, setSummary] = useState(INITIAL_SUMMARY);
+  const [trips, setTrips] = useState([]);
+  const [tripFrequencyData, setTripFrequencyData] = useState([]);
+  const [topDestinationsData, setTopDestinationsData] = useState([]);
+  const [reasonsData, setReasonsData] = useState([]);
   const location = useLocation();
 
   // Fetch metrics from API endpoints and aggregate into summary
@@ -79,111 +83,164 @@ export default function TravelDashboard() {
     }
 
     async function fetchMetrics(){
-      const fetchMetrics = async () => {
-  const res = await fetch('/api/kpi?range=30d');
-  const data = await res.json();
-  setMetrics(data);
-};
-
       try{
-        const [tripsRes, expensesRes, docsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/trips`),
-          fetch(`${API_BASE}/api/expenses`),
-          fetch(`${API_BASE}/api/documents`)
-        ].map(p => p.catch(e => ({ ok:false }))));
-
-        const trips = tripsRes && tripsRes.ok ? await tripsRes.json() : [];
-        const expenses = expensesRes && expensesRes.ok ? await expensesRes.json() : [];
-        const docs = docsRes && docsRes.ok ? await docsRes.json() : [];
-
-        // aggregate expenses
-        let airfare = 0, hotels = 0, cars = 0, total = 0;
-        let flightsCount = 0, hotelsCount = 0, carsCount = 0, hotelNights = 0, carDays = 0;
-
-        for(const e of (expenses || [])){
-          const amt = parseFloat(e.amount || e.value || e.total || 0) || 0;
-          total += amt;
-          const cat = categorizeExpense(e);
-          if(cat === 'airfare'){ airfare += amt; flightsCount += 1; }
-          else if(cat === 'hotels'){ hotels += amt; hotelsCount += 1; hotelNights += parseInt(e.nights || e.quantity || 0) || 0; }
-          else if(cat === 'cars'){ cars += amt; carsCount += 1; carDays += parseInt(e.days || e.quantity || 0) || 0; }
-        }
-
-        // trips metrics
-        const tripsCount = (trips || []).length;
-        const travelerSet = new Set();
-        const destSet = new Set();
-        const planBookDiffs = [];
-        const approvalDiffs = [];
-
-        for(const t of (trips || [])){
-          if(t.requester?.email) travelerSet.add(t.requester.email);
-          if(t.requester_email) travelerSet.add(t.requester_email);
-          if(t.requester) travelerSet.add(typeof t.requester === 'string' ? t.requester : (t.requester.email || t.requester.name || ''));
-          if(t.destination) destSet.add(t.destination);
-
-          // avg plan-book: difference between createdAt and start
-          try{
-            const created = t.createdAt ? new Date(t.createdAt) : (t.requestedAt ? new Date(t.requestedAt) : null);
-            const start = t.start ? new Date(t.start) : null;
-            if(created && start && !isNaN(created) && !isNaN(start)){
-              const days = Math.max(0, Math.round((start - created) / (1000*60*60*24)));
-              planBookDiffs.push(days);
-            }
-          }catch(e){}
-
-          // avg approval: find first timeline entry with status 'approved'
-          if(Array.isArray(t.timeline)){
-            const created = t.createdAt ? new Date(t.createdAt) : null;
-            const ap = t.timeline.find(x => (x.status||'').toLowerCase() === 'approved');
-            if(created && ap && ap.ts){
-              try{ const approvedAt = new Date(ap.ts); if(!isNaN(approvedAt)) approvalDiffs.push(Math.max(0, Math.round((approvedAt - created)/(1000*60*60*24)))); }catch(e){}
-            }
+        // Fetch KPIs from backend
+        const kpiRes = await fetch(`${API_BASE}/api/kpi?range=30d`);
+        if(kpiRes && kpiRes.ok){
+          const kjson = await kpiRes.json();
+          if(kjson && kjson.success && kjson.kpis){
+            const k = kjson.kpis;
+            const newSummary = {
+              airfare: Number(k.total_airfare) || 0,
+              hotels: Number(k.total_hotels) || 0,
+              cars: Number(k.total_cars) || 0,
+              total: Number(k.total_spend) || 0,
+              trips: Number(k.trips_count) || 0,
+              travelers: Number(k.distinct_travelers) || 0,
+              destinations: Number(k.destinations_count) || 0,
+              avgPlanBook: k.avg_booking_lead_days ? (Math.round(k.avg_booking_lead_days*10)/10) + ' days' : 'N/A',
+              avgApproval: 'N/A',
+              flightsCount: Number(k.flights_count) || 0,
+              hotelsCount: Number(k.hotels_count) || 0,
+              carsCount: Number(k.cars_count) || 0,
+              hotelNights: Number(k.hotel_nights) || 0,
+              carDays: Number(k.car_days) || 0
+            };
+            if(mounted) setSummary(newSummary);
+            return;
           }
         }
 
-        const avgPlanBook = planBookDiffs.length ? (Math.round((planBookDiffs.reduce((a,b)=>a+b,0)/planBookDiffs.length) * 10)/10) + ' days' : 'N/A';
-        const avgApproval = approvalDiffs.length ? (Math.round((approvalDiffs.reduce((a,b)=>a+b,0)/approvalDiffs.length) * 10)/10) + ' days' : 'N/A';
+        // Fallback: fetch individual endpoints
+        const [tripsRes, expensesRes] = await Promise.all([
+          fetch(`${API_BASE}/api/trips`),
+          fetch(`${API_BASE}/api/expenses`)
+        ].map(p => p.catch(e => ({ ok:false }))));
+
+        const tripsData = tripsRes && tripsRes.ok ? await tripsRes.json() : { trips: [] };
+        const expensesData = expensesRes && expensesRes.ok ? await expensesRes.json() : { expenses: [] };
+        
+        const trips = tripsData.trips || [];
+        const expenses = expensesData.expenses || [];
+
+        // Fallback aggregation
+        let airfare = 0, hotels = 0, cars = 0, total = 0;
+        let flightsCount = 0, hotelsCount = 0, carsCount = 0, hotelNights = 0, carDays = 0;
+
+        for(const e of expenses){
+          const amt = parseFloat(e.amount || 0) || 0;
+          total += amt;
+          const cat = categorizeExpense(e);
+          if(cat === 'airfare'){ airfare += amt; flightsCount += 1; }
+          else if(cat === 'hotels'){ hotels += amt; hotelsCount += 1; }
+          else if(cat === 'cars'){ cars += amt; carsCount += 1; }
+        }
+
+        const tripsCount = trips.length;
+        const travelerSet = new Set();
+        const destSet = new Set();
+
+        for(const t of trips){
+          if(t.requesterEmail) travelerSet.add(t.requesterEmail);
+          if(t.destination) destSet.add(t.destination);
+        }
 
         const newSummary = {
           airfare, hotels, cars, total,
           trips: tripsCount,
           travelers: travelerSet.size,
           destinations: destSet.size,
-          avgPlanBook,
-          avgApproval,
+          avgPlanBook: 'N/A',
+          avgApproval: 'N/A',
           flightsCount, hotelsCount, carsCount, hotelNights, carDays
         };
 
-        // Try server-side KPI endpoint to get authoritative aggregates (fallback to local aggregation above)
-        try{
-          const token = localStorage.getItem('app_token');
-          const headers = token ? { Authorization: `Bearer ${token}` } : {};
-          const kpiRes = await fetch(`${API_BASE}/api/kpi?range=30d`, { headers });
-          if(kpiRes && kpiRes.ok){
-            const kjson = await kpiRes.json().catch(()=>null);
-            if(kjson && kjson.success && kjson.kpis){
-              const k = kjson.kpis;
-              // prefer server values when available
-              newSummary.airfare = Number(k.total_airfare ?? k.total_spend ?? newSummary.airfare);
-              newSummary.hotels = Number(k.total_hotels ?? newSummary.hotels);
-              newSummary.cars = Number(k.total_cars ?? newSummary.cars);
-              newSummary.total = Number(k.total_spend ?? newSummary.total);
-              newSummary.trips = Number(k.trips_count ?? newSummary.trips);
-              newSummary.travelers = Number(k.distinct_travelers ?? newSummary.travelers);
-              newSummary.avgPlanBook = (k.avg_booking_lead_days ? (Math.round(k.avg_booking_lead_days*10)/10) + ' days' : newSummary.avgPlanBook);
-              newSummary.avgApproval = (k.avg_approval_hours ? (Math.round(k.avg_approval_hours*10)/10) + ' hours' : newSummary.avgApproval);
-            }
-          }
-        }catch(err){ console.warn('Failed to fetch /api/kpi', err); }
-
-        if(mounted) setSummary(s => Object.assign({}, s, newSummary));
+        if(mounted) setSummary(newSummary);
       }catch(err){ console.warn('fetchMetrics failed', err); }
     }
 
     fetchMetrics();
     const tid = setInterval(fetchMetrics, 15000);
     return () => { mounted = false; clearInterval(tid); };
+  }, []);
+
+  // Fetch trips data for charts
+  useEffect(() => {
+    async function fetchTrips(){
+      try{
+        const res = await fetch(`${API_BASE}/api/trips`);
+        if(res && res.ok){
+          const data = await res.json();
+          if(data.success && data.trips){
+            setTrips(data.trips);
+            
+            // Process trip frequency data (last 6 months)
+            const monthCounts = {};
+            const now = new Date();
+            for(let i = 5; i >= 0; i--){
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              const key = d.toISOString().slice(0, 7); // YYYY-MM
+              monthCounts[key] = 0;
+            }
+            
+            data.trips.forEach(trip => {
+              if(trip.start){
+                const monthKey = trip.start.slice(0, 7);
+                if(monthCounts.hasOwnProperty(monthKey)){
+                  monthCounts[monthKey]++;
+                }
+              }
+            });
+            
+            const freqData = Object.entries(monthCounts).map(([month, count]) => ({
+              month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' }),
+              count
+            }));
+            setTripFrequencyData(freqData);
+            
+            // Process top destinations
+            const destCounts = {};
+            data.trips.forEach(trip => {
+              if(trip.destination){
+                destCounts[trip.destination] = (destCounts[trip.destination] || 0) + 1;
+              }
+            });
+            
+            const topDest = Object.entries(destCounts)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([label, value]) => ({ label, value }));
+            setTopDestinationsData(topDest);
+            
+            // Process reasons/purposes for traveling
+            const reasonCounts = {};
+            data.trips.forEach(trip => {
+              const purpose = trip.purpose || 'Other';
+              // Categorize purposes
+              let category = 'Other';
+              if(/meeting|client|customer/i.test(purpose)) category = 'Client Meetings';
+              else if(/conference|summit|event/i.test(purpose)) category = 'Conferences';
+              else if(/training|workshop|seminar/i.test(purpose)) category = 'Training';
+              else if(/site|visit|inspection/i.test(purpose)) category = 'Site Visits';
+              else if(/sales|demo|presentation/i.test(purpose)) category = 'Sales';
+              
+              reasonCounts[category] = (reasonCounts[category] || 0) + 1;
+            });
+            
+            const reasons = Object.entries(reasonCounts)
+              .map(([name, value]) => ({ name, value }))
+              .sort((a, b) => b.value - a.value);
+            setReasonsData(reasons);
+          }
+        }
+      }catch(err){
+        console.warn('fetchTrips failed', err);
+      }
+    }
+    
+    fetchTrips();
+    const tid = setInterval(fetchTrips, 30000);
+    return () => clearInterval(tid);
   }, []);
 
   // Listen to trip-created events to update summary in realtime
@@ -376,11 +433,26 @@ export default function TravelDashboard() {
     setEditingName(false);
   }
 
-  function doLogout(){
+  async function doLogout(){
+    try{
+      // Call logout API
+      const token = localStorage.getItem('app_token');
+      if(token){
+        await fetch(`${API_BASE}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }).catch(() => {}); // Ignore errors, logout locally anyway
+      }
+    }catch(e){
+      console.warn('Logout API call failed', e);
+    }
+    
     // clear local auth and profile state
     localStorage.removeItem('currentRole');
     localStorage.removeItem('currentUser');
-    // remove the demo/app token so protected routes require login
     localStorage.removeItem('app_token');
     setUser({ name: 'Guest', email: '' });
     setRoleLocal('employee');
@@ -417,7 +489,7 @@ export default function TravelDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen app-root p-8 font-sans text-gray-800">
+    <div className="min-h-screen app-root font-sans text-gray-800">
       {chartCard && (
         <div className="fixed inset-0 z-40 flex items-center justify-center" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-black/40" onClick={closeChartCard} />
@@ -443,18 +515,27 @@ export default function TravelDashboard() {
         </div>
       )}
 
-      <div className="flex gap-6 max-w-[1400px] mx-auto">
-        <aside className={`sidebar ${collapsed ? 'collapsed' : ''} sticky top-8 self-start`}>
-          <div className={`admin-profile p-3 flex items-center justify-between ${profileOpen ? 'menu-open' : ''}`} ref={profileRef}>
-            <div className="flex items-center gap-3">
-              <div className="rounded-full avatar-primary text-white w-10 h-10 flex items-center justify-center">{(user && user.name) ? user.name.charAt(0).toUpperCase() : 'A'}</div>
-              <div className="admin-info">
-                <div className="admin-name font-semibold" data-fullname={user?.name || 'Admin Name'}>{user?.name || 'Admin Name'}</div>
-                <div className="admin-role text-xs muted-text">Administrator</div>
-              </div>
+      <div className="flex">
+        <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+          {/* Logo/Brand Header */}
+          <div className="sidebar-header">
+            <span className="sidebar-logo-icon">✈</span>
+            <span className="sidebar-logo">Employee Travel Portal</span>
+          </div>
+
+          {/* User Profile Card */}
+          <div className="sidebar-user" ref={profileRef}>
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user.name} className="sidebar-user-avatar object-cover" />
+            ) : (
+              <div className="sidebar-user-avatar">{(user && user.name) ? user.name.charAt(0).toUpperCase() : 'V'}</div>
+            )}
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{user?.name || 'Vijay'}</div>
+              <div className="sidebar-user-email">{user?.email || 'vijay@gmail.com'}</div>
             </div>
             <div style={{ position: 'relative' }}>
-              <button ref={profileToggleRef} type="button" className={`toggle-btn ${profileOpen ? 'profile-open' : ''}`} aria-haspopup="true" aria-expanded={profileOpen} onClick={() => setProfileOpen((s) => !s)} aria-label="Open profile menu" title="Profile">⋯</button>
+              <button ref={profileToggleRef} type="button" className={`toggle-btn ${profileOpen ? 'profile-open' : ''}`} aria-haspopup="true" aria-expanded={profileOpen} onClick={() => setProfileOpen((s) => !s)} aria-label="Open profile menu" title="Profile" style={{color:'rgba(255,255,255,0.7)'}}>▼</button>
 
               {/* render backdrop and menu into a portal to avoid clipping when sidebar is collapsed */}
               {profileOpen && typeof document !== 'undefined' && createPortal(
@@ -512,114 +593,63 @@ export default function TravelDashboard() {
             </div>
           </div>
 
-          <div className="sidebar-top p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={(user && user.name) ? user.name : 'Travel'} className="rounded-full w-8 h-8 object-cover" />
-              ) : (
-                <div className="rounded-full bg-gray-900 text-white w-8 h-8 flex items-center justify-center">TD</div>
-              )}
-              <div className="-label">Travel</div>
-            </div>
-            <button type="button" className="toggle-btn" onClick={() => setCollapsed((s) => !s)} aria-label="Toggle sidebar">☰</button>
-          </div>
-
-          <nav className="nav p-3">
-            <button title="Analytics" aria-current={isActive('/analytics') ? 'page' : undefined} className={`nav-button ${isActive('/analytics') ? 'nav-active' : ''}`} onClick={() => go('/analytics')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 3v18h18" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M8 14V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M12 14v-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M16 14v-2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-              <span className="nav-label">Analytics</span>
-            </button>
-
+          <nav className="sidebar-nav">
             <button title="Dashboard" aria-current={isActive('/dashboard') ? 'page' : undefined} className={`nav-button ${isActive('/dashboard') ? 'nav-active' : ''}`} onClick={() => go('/dashboard')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 11.5L12 4l9 7.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 21V12h14v9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">🏠</span>
               <span className="nav-label">Dashboard</span>
             </button>
 
+            <button title="Analytics" aria-current={isActive('/analytics') ? 'page' : undefined} className={`nav-button ${isActive('/analytics') ? 'nav-active' : ''}`} onClick={() => go('/analytics')} type="button">
+              <span className="nav-icon" aria-hidden="true">📊</span>
+              <span className="nav-label">Analytics</span>
+            </button>
+
             <button title="Documents" aria-current={isActive('/documents') ? 'page' : undefined} className={`nav-button ${isActive('/documents') ? 'nav-active' : ''}`} onClick={() => go('/documents')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M7 3h10v4H7z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 7v10a2 2 0 002 2h10a2 2 0 002-2V7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">📄</span>
               <span className="nav-label">Documents</span>
             </button>
 
             <button title="Expense" aria-current={isActive('/expense') ? 'page' : undefined} className={`nav-button ${isActive('/expense') ? 'nav-active' : ''}`} onClick={() => go('/expense')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 8v8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M8 12h8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M4 6h16v12H4z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">💳</span>
               <span className="nav-label">Expense</span>
             </button>
 
             <button title="Policy" aria-current={isActive('/policy') ? 'page' : undefined} className={`nav-button ${isActive('/policy') ? 'nav-active' : ''}`} onClick={() => go('/policy', { state: { fromDashboard: true } }) } type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M7 7h10v10H7z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">📋</span>
               <span className="nav-label">Policy</span>
             </button>
 
             <button title="Risk" aria-current={isActive('/risk') ? 'page' : undefined} className={`nav-button ${isActive('/risk') ? 'nav-active' : ''}`} onClick={() => go('/risk')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2v6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M5 22h14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M7 12l5-7 5 7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">⚠️</span>
               <span className="nav-label">Risk</span>
             </button>
 
             <button title="Trips" aria-current={isActive('/trips') ? 'page' : undefined} className={`nav-button ${isActive('/trips') ? 'nav-active' : ''}`} onClick={() => go('/trips')} type="button">
-              <span className="nav-icon" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 7h18v10H3z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M16 3v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M8 3v4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
+              <span className="nav-icon" aria-hidden="true">🗓️</span>
               <span className="nav-label">Trips</span>
             </button>
 
             <button title="Admin" aria-current={isActive('/admin/trips') ? 'page' : undefined} className={`nav-button ${isActive('/admin/trips') ? 'nav-active' : ''}`} onClick={() => go('/admin/trips')} type="button">
-              <span className="nav-icon" aria-hidden="true">⚙</span>
+              <span className="nav-icon" aria-hidden="true">⚙️</span>
               <span className="nav-label">Admin</span>
             </button>
           </nav>
         </aside>
 
-          <main className="flex-1">
-          <div className="max-w-[1160px] mx-auto elevated p-6 shadow-lg">
-            <header className="mb-6 flex items-center justify-between">
+          <main className="main-content flex-1">
+          <div className="elevated shadow-lg">
+            <header className="mb-8 flex items-center justify-between pb-6 border-b border-gray-100">
               <div>
-                <h1 className="text-4xl font-serif text-slate-800">Travel dashboard </h1>
+                <h1 className="text-4xl font-bold text-slate-800 mb-2">Travel Dashboard</h1>
+                <p className="text-sm text-muted">Welcome back, {user?.name || 'Admin'}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <label className="text-sm text-muted">Theme</label>
+              <div className="flex items-center gap-4">
+                <label className="text-sm text-muted font-medium">Theme</label>
                 <ThemeToggle />
-                <div className="ml-4">
-                  <input placeholder="Admin email" id="adminEmail" className="border px-2 py-1 text-sm" style={{width:140}} />
-                  <input placeholder="Password" id="adminPassword" type="password" className="border px-2 py-1 text-sm ml-2" style={{width:120}} />
-                  <button className="px-2 py-1 ml-2 elevated text-sm" onClick={async () => {
+                <div className="ml-4 flex items-center gap-2">
+                  <input placeholder="Admin email" id="adminEmail" className="border border-gray-200 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" style={{width:160}} />
+                  <input placeholder="Password" id="adminPassword" type="password" className="border border-gray-200 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" style={{width:140}} />
+                  <button className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium" style={{backgroundColor:'#6366f1'}} onMouseOver={(e)=>e.target.style.backgroundColor='#4f46e5'} onMouseOut={(e)=>e.target.style.backgroundColor='#6366f1'} onClick={async () => {
                     const v = document.getElementById('adminEmail').value;
                     const p = document.getElementById('adminPassword').value;
                     if(!v) return alert('enter email');
@@ -641,7 +671,7 @@ export default function TravelDashboard() {
             </header>
 
             {/* Top summary row (airfare + hotels + cars = total) - now using KpiCard for consistency */}
-            <section className="flex items-center gap-4 mb-6">
+            <section className="flex items-center gap-6 mb-8">
               <div className="flex-1">
                 <KpiCard title="Airfare" value={`$${(Number(summary.airfare) || 0).toLocaleString()}`} subtitle="Total airfare" icon="✈" onClick={() => toggleExpand('airfare')} />
               </div>
@@ -653,14 +683,14 @@ export default function TravelDashboard() {
               <div className="flex-1">
                 <KpiCard title="Cars" value={`$${(Number(summary.cars) || 0).toLocaleString()}`} subtitle="Total cars" icon="🚗" onClick={() => toggleExpand('cars')} />
               </div>
-              <div className="text-2xl text-slate-600 font-semibold">=</div>
+              <div className="text-3xl text-slate-400 font-light">=</div>
               <div className="flex-1">
                 <KpiCard title="Total spend" value={`$${(Number(summary.total) || 0).toLocaleString()}`} subtitle="Total spend" icon="💰" onClick={() => toggleExpand('totalSpend')} />
               </div>
             </section>
 
             {/* KPI row rendered with reusable KpiCard */}
-            <section className="grid grid-cols-5 gap-4 mb-6">
+            <section className="grid grid-cols-5 gap-5 mb-8">
               <div className="col-span-1"><KpiCard small title="Trips" value={summary.trips ?? 0} subtitle="" icon="🧾" /></div>
               <div className="col-span-1"><KpiCard small title="Travelers" value={summary.travelers ?? 0} subtitle="" icon="👥" /></div>
               <div className="col-span-1"><KpiCard small title="Destinations" value={summary.destinations ?? 0} subtitle="" icon="📍" /></div>
@@ -669,13 +699,13 @@ export default function TravelDashboard() {
             </section>
 
             {/* Main content */}
-            <section className="grid grid-cols-12 gap-6">
-              <div className="col-span-7 elevated p-6">
-                <h3 className="font-semibold text-lg mb-4 inline-block elevated px-3 py-1 rounded-full">Corporate reasons for travelling</h3>
+            <section className="grid grid-cols-12 gap-8">
+              <div className="col-span-7 elevated">
+                <h3 className="font-semibold text-xl mb-6">Corporate reasons for travelling</h3>
                 <div className="charts-section flex items-center gap-6">
                   <div className="chart-card" style={{ width: 320, height: 320 }}>
                     <h4 className="sr-only">Corporate Reasons</h4>
-                    <DynamicPieChart data={[]} colors={COLORS} onSliceClick={(item, i) => { setSelectedReason(item.name); openChartCard({ title: 'Reason details', item, index: i, dataset: [], colors: COLORS }); }} />
+                    <DynamicPieChart data={reasonsData} colors={COLORS} onSliceClick={(item, i) => { setSelectedReason(item.name); openChartCard({ title: 'Reason details', item, index: i, dataset: reasonsData, colors: COLORS }); }} />
                     {selectedReason && (
                       <div className="mt-2 text-sm text-slate-600">
                         Filter: <strong>{selectedReason}</strong> <button type="button" className="px-2 py-0.5 ml-3 rounded border text-xs" onClick={() => setSelectedReason(null)}>Clear</button>
@@ -685,14 +715,25 @@ export default function TravelDashboard() {
 
                   <div className="flex-1">
                     <ul className="space-y-2 text-sm text-slate-600">
-                      {/* no sample list - this will render once data is available */}
+                      {reasonsData.map((reason, i) => (
+                        <li key={i} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block w-3 h-3 rounded-full" style={{backgroundColor: COLORS[i % COLORS.length]}}></span>
+                            <span>{reason.name}</span>
+                          </div>
+                          <span className="font-semibold">{reason.value}</span>
+                        </li>
+                      ))}
+                      {reasonsData.length === 0 && (
+                        <li className="text-gray-400 text-xs">No data available</li>
+                      )}
                     </ul>
                   </div>
                 </div>
               </div>
 
-              <div className="col-span-5 elevated p-6">
-                <div className="space-y-6">
+              <div className="col-span-5 elevated">
+                <div className="space-y-5">
                   <div
                     className="bg-gradient-to-r from-purple-700 to-purple-600 text-white rounded-lg p-4 flex items-center justify-between kpi-card-clickable elevated"
                     onClick={() => toggleExpand('flights') }
@@ -746,23 +787,23 @@ export default function TravelDashboard() {
           {/*}  <footer className="mt-6 text-center text-xs text-gray-400">This graph/chart is linked to excel, and changes automatically based on data. Just left click on it and select "Edit Data".</footer>
 
             {/* Reporting & Analytics Section */}
-            <section className="mt-12 max-w-[1160px] mx-auto">
-              <h2 className="text-2xl font-semibold mb-4">Reporting & Analytics</h2>
+            <section className="mt-12">
+              <h2 className="text-2xl font-bold mb-6">Reporting & Analytics</h2>
               <div className="grid grid-cols-12 gap-8">
-                  <div className="col-span-7 elevated p-6">
+                  <div className="col-span-7 elevated">
                     {visibleWidgets.includes('tripFrequency') && (
                           <>
-                            <h3 className="font-semibold text-lg mb-2">Trip Frequency (last 6 months)</h3>
-                            <TripFrequencyBarChart data={[]} />
+                            <h3 className="font-semibold text-lg mb-4">Trip Frequency (last 6 months)</h3>
+                            <TripFrequencyBarChart data={tripFrequencyData} />
                           </>
                         )}
                   </div>
 
-                  <div className="col-span-5 elevated p-6">
+                  <div className="col-span-5 elevated">
                     {visibleWidgets.includes('topDestinations') && (
                       <>
-                        <h3 className="font-semibold text-lg mb-2">Top Destinations</h3>
-                        <TopDestinationsChart data={[]} />
+                        <h3 className="font-semibold text-lg mb-4">Top Destinations</h3>
+                        <TopDestinationsChart data={topDestinationsData} />
                       </>
                     )}
                   </div>
@@ -770,19 +811,24 @@ export default function TravelDashboard() {
             </section>
 
             {/* Extra row: map and risk feed + widget manager */}
-            <section className="mt-8 grid grid-cols-12 gap-6">
+            <section className="mt-8 grid grid-cols-12 gap-8">
               <div className="col-span-8">
-                <div className="elevated p-6">
-                  <GlobalMap locations={[]} />
+                <div className="elevated">
+                  <GlobalMap locations={trips.map(t => ({ 
+                    name: t.destination, 
+                    lat: 0, 
+                    lng: 0, 
+                    status: t.status 
+                  }))} />
                 </div>
               </div>
 
-              <div className="col-span-4 space-y-4">
-                <div className="elevated p-4">
+              <div className="col-span-4 space-y-6">
+                <div className="elevated">
                   <WidgetManager initial={visibleWidgets} onChange={(w) => setVisibleWidgets(w)} />
                 </div>
 
-                <div className="elevated p-4">
+                <div className="elevated">
                   {visibleWidgets.includes('riskFeed') && <RiskFeed />}
                 </div>
               </div>

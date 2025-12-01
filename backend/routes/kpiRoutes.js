@@ -1,8 +1,8 @@
-import express from 'express';
-import { getKpis } from '../controllers/kpiController.js';
+import express from "express";
+import { getKPIs } from "../controllers/kpiController.js";
 
 const router = express.Router();
 
-router.get('/', getKpis);
+router.get("/", getKPIs);
 
 export default router;

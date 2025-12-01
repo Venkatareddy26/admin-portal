@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,14 +15,18 @@ const SAMPLE_DESTINATIONS = [
   { id: 'del', name: 'Delhi', lat: 28.7041, lng: 77.1025, risk: 'High' },
 ];
 
-function generateId(prefix='id'){
-  return `${prefix}_${Date.now()}_${Math.floor(Math.random()*9000+1000)}`;
-}
+function generateId(prefix='id'){ return `${prefix}_${Date.now()}_${Math.floor(Math.random()*9000+1000)}`; }
 
 function riskColor(r){
   if(r === 'High') return '#ef4444';
   if(r === 'Medium') return '#f59e0b';
   return '#10b981';
+}
+
+function riskBg(r){
+  if(r === 'High') return 'rgba(239,68,68,0.1)';
+  if(r === 'Medium') return 'rgba(245,158,11,0.1)';
+  return 'rgba(16,185,129,0.1)';
 }
 
 export default function Risk(){
@@ -48,340 +52,310 @@ export default function Risk(){
     try{ const r = localStorage.getItem(NOTIF_KEY); if(r) return JSON.parse(r); }catch{}; return [];
   });
 
-  useEffect(()=>{
-    try{ localStorage.setItem('td_destinations', JSON.stringify(destinations)); }catch{}
-  }, [destinations]);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
-  useEffect(()=>{
-    try{ localStorage.setItem(ADVISORIES_KEY, JSON.stringify(advisories)); }catch{}
-  }, [advisories]);
+  useEffect(()=>{ try{ localStorage.setItem('td_destinations', JSON.stringify(destinations)); }catch{} }, [destinations]);
+  useEffect(()=>{ try{ localStorage.setItem(ADVISORIES_KEY, JSON.stringify(advisories)); }catch{} }, [advisories]);
+  useEffect(()=>{ try{ localStorage.setItem(TRAVELER_STATE_KEY, JSON.stringify(travelers)); }catch{} }, [travelers]);
+  useEffect(()=>{ try{ localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications)); }catch{} }, [notifications]);
 
-  useEffect(()=>{
-    try{ localStorage.setItem(TRAVELER_STATE_KEY, JSON.stringify(travelers)); }catch{}
-  }, [travelers]);
-
-  useEffect(()=>{
-    try{ localStorage.setItem(NOTIF_KEY, JSON.stringify(notifications)); }catch{}
-  }, [notifications]);
-
-  // Analyze an advisory and update destination risk; notify travelers/operators
   function processAdvisory(adv){
-    // find destination
     const d = destinations.find(x => x.id === adv.destId);
     if(d){
-      // map severity to risk level
-      const sev = (adv.severity || adv.level || 'medium').toLowerCase();
+      const sev = (adv.severity || 'medium').toLowerCase();
       const newRisk = sev === 'high' ? 'High' : sev === 'medium' ? 'Medium' : 'Low';
-      // only increase risk, never reduce automatically
       const ranks = { 'Low': 1, 'Medium': 2, 'High': 3 };
       if(ranks[newRisk] > (ranks[d.risk] || 1)){
         setDestinations(ds => ds.map(x => x.id === d.id ? ({ ...x, risk: newRisk }) : x));
       }
     }
-
-    // store advisory and send operator notification
-    setAdvisories(a => {
-      const next = [adv, ...a].slice(0,50);
-      try{ localStorage.setItem(ADVISORIES_KEY, JSON.stringify(next)); }catch{}
-      return next;
-    });
-
-    const notif = { id: generateId('notif'), to: 'ops@example.com', subject: `Advisory: ${adv.title}`, body: adv.description, ts: new Date().toISOString(), advisoryId: adv.id };
-    setNotifications(n => { const next = [notif, ...n].slice(0,100); try{ localStorage.setItem(NOTIF_KEY, JSON.stringify(next)); }catch{}; return next; });
-
-    // notify travelers optionally
-    travelers.forEach(tr => {
-      if(tr.optIn){
-        sendNotification(tr.email, `Advisory: ${adv.title}`, `Dear ${tr.name},\n\n${adv.description}\n\nLocation: ${adv.destId}\nSeverity: ${adv.severity || adv.level}\n\nPlease follow instructions.`);
-      }
-    });
+    setAdvisories(a => [adv, ...a].slice(0,50));
+    const notif = { id: generateId('notif'), to: 'ops@example.com', subject: `Advisory: ${adv.title}`, body: adv.description, ts: new Date().toISOString() };
+    setNotifications(n => [notif, ...n].slice(0,100));
   }
 
-  // Simulate an auto-alert advisory generator (e.g., a new travel advisory appears)
-  useEffect(()=>{
-    const t = setInterval(()=>{
-      // 10% chance every 30s to create a new advisory for a random destination
-      if(Math.random() < 0.1){
-        const d = destinations[Math.floor(Math.random()*destinations.length)];
-        const types = ['political','weather','health','other'];
-        const severities = ['low','medium','high'];
-        const adv = {
-          id: generateId('adv'),
-          destId: d.id,
-          title: `${types[Math.floor(Math.random()*types.length)]} advisory for ${d.name}`,
-          type: types[Math.floor(Math.random()*types.length)],
-          severity: severities[Math.floor(Math.random()*severities.length)],
-          ts: new Date().toISOString(),
-          description: `Auto-generated ${d.name} advisory based on ${d.risk} and random factors.`,
-        };
-        processAdvisory(adv);
-      }
-    }, 30000);
-    return ()=> clearInterval(t);
-  }, [destinations, travelers]);
-
-  // helper: send notification (store + return mailto)
   function sendNotification(to, subject, body){
     const n = { id: generateId('notif'), to, subject, body, ts: new Date().toISOString() };
     setNotifications(s => [n, ...s].slice(0,100));
-    try{ localStorage.setItem(NOTIF_KEY, JSON.stringify([n, ...(JSON.parse(localStorage.getItem(NOTIF_KEY))||[])])); }catch{}
     return n;
   }
 
-  // Traveler safety functions
-  function toggleOptIn(travelerId){
-    setTravelers(t=> t.map(x=> x.id===travelerId ? ({...x, optIn: !x.optIn}) : x));
-  }
-
+  function toggleOptIn(travelerId){ setTravelers(t=> t.map(x=> x.id===travelerId ? ({...x, optIn: !x.optIn}) : x)); }
   function triggerSOS(travelerId){
     setTravelers(t=> t.map(x=> x.id===travelerId ? ({...x, sos: true}) : x));
     const tr = travelers.find(x=> x.id===travelerId);
-    if(tr) sendNotification('ops@example.com', `SOS: ${tr.name}`, `${tr.name} triggered SOS at ${new Date().toLocaleString()} — last known location ${JSON.stringify(tr.location)}`);
+    if(tr) sendNotification('ops@example.com', `SOS: ${tr.name}`, `${tr.name} triggered SOS`);
   }
-
-  function checkIn(travelerId){
-    setTravelers(t=> t.map(x=> x.id===travelerId ? ({...x, lastCheckIn: new Date().toISOString(), sos: false}) : x));
-  }
-
-  // Escalation workflow: notify HR -> Security -> Crisis Team
+  function checkIn(travelerId){ setTravelers(t=> t.map(x=> x.id===travelerId ? ({...x, lastCheckIn: new Date().toISOString(), sos: false}) : x)); }
   function escalateForTraveler(travelerId){
     const tr = travelers.find(x=> x.id===travelerId);
     if(!tr) return;
-    const body = `Escalation for ${tr.name} — last known ${JSON.stringify(tr.location)} at ${tr.lastCheckIn}`;
-    sendNotification('hr@example.com', `Escalation: ${tr.name}`, body);
-    sendNotification('security@example.com', `Escalation: ${tr.name}`, body);
-    sendNotification('crisis@example.com', `Escalation: ${tr.name}`, body);
-  alert('Escalation notifications queued to HR, Security and Crisis Team');
+    sendNotification('hr@example.com', `Escalation: ${tr.name}`, `Escalation for ${tr.name}`);
+    sendNotification('security@example.com', `Escalation: ${tr.name}`, `Escalation for ${tr.name}`);
+    alert('Escalation sent to HR and Security');
   }
-
-  // risk scoring editor
-  function setRisk(destId, risk){
-    setDestinations(d => d.map(x=> x.id===destId?({...x, risk}):x));
-  }
+  function setRisk(destId, risk){ setDestinations(d => d.map(x=> x.id===destId?({...x, risk}):x)); }
 
   function addEmergencyContact(name, phone, notes){
     const ec = { id: generateId('ec'), name, phone, notes };
     try{ const raw = JSON.parse(localStorage.getItem('td_emergency_contacts') || '[]'); raw.unshift(ec); localStorage.setItem('td_emergency_contacts', JSON.stringify(raw)); }catch{}
-    alert('Emergency contact saved locally');
   }
-
-  function getEmergencyContacts(){
-    try{ return JSON.parse(localStorage.getItem('td_emergency_contacts') || '[]'); }catch{return []}
-  }
-
-  // high-risk check-in tracking
-  const checkInWarnings = travelers.filter(t => {
-    if(!t.optIn) return false;
-    // if last checkin older than 24 hours and they're in High risk dest (simple heuristic)
-    const last = new Date(t.lastCheckIn || 0);
-    const hours = (Date.now() - last.getTime()) / (1000*60*60);
-    return hours > 24;
-  });
+  function getEmergencyContacts(){ try{ return JSON.parse(localStorage.getItem('td_emergency_contacts') || '[]'); }catch{return []} }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex items-center justify-between mb-6">
+    <div className="min-h-screen font-sans" style={{backgroundColor:'var(--bg-color)', color:'var(--text-color)'}}>
+      <div className="max-w-[1400px] mx-auto p-6">
+        {/* Header */}
+        <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold">Risk & Safety</h1>
-            <div className="text-sm text-gray-500">Global risk map, traveler safety, advisories and emergency workflows</div>
+            <h1 className="text-2xl font-bold" style={{color:'var(--text-color)'}}>Risk & Safety</h1>
+            <p className="text-sm mt-1" style={{color:'var(--text-muted)'}}>Global risk map, traveler safety, advisories and emergency workflows</p>
           </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => navigate(-1)} className="px-2 py-1 elevated">← Back</button>
-            <button type="button" onClick={()=> { const adv = { id: generateId('adv'), destId: destinations[0].id, title: 'Manual advisory', level: 'Medium', ts: new Date().toISOString(), description: 'Manual advisory created by operator' }; setAdvisories(a => [adv, ...a]); sendNotification('ops@example.com', adv.title, adv.description);} } className="px-3 py-2 bg-purple-700 text-white rounded">Create advisory</button>
-            <button type="button" onClick={()=> { const ec = getEmergencyContacts(); if(ec.length===0) alert('No emergency contacts saved'); else alert(JSON.stringify(ec[0], null, 2)); }} className="px-3 py-2 elevated">Emergency contacts</button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button type="button" onClick={()=> setShowAdvForm(true)} className="px-4 py-2 text-sm font-medium rounded-lg text-white" style={{backgroundColor:'var(--primary-color)'}}>+ New Advisory</button>
+            <button type="button" onClick={()=> setShowEmergencyModal(true)} className="px-4 py-2 text-sm font-medium rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>Emergency Contacts</button>
+            <button type="button" onClick={() => navigate(-1)} className="px-4 py-2 text-sm font-medium rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>← Back</button>
           </div>
         </header>
 
         <div className="grid grid-cols-12 gap-6">
-          <div className="col-span-8 elevated p-4">
-            <h3 className="font-semibold mb-3">Risk map</h3>
-            <div className="mb-4 text-sm text-gray-500">Color-coded destinations by risk (Low/Medium/High)</div>
-            <div style={{height: 360}} className="border rounded overflow-hidden">
-              <MapContainer center={[20,0]} zoom={2} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                {destinations.map(d => {
-                  const advs = advisories.filter(a => a.destId === d.id);
-                  return (
-                    <CircleMarker key={d.id} center={[d.lat, d.lng]} radius={8 + (d.risk === 'High' ? 4 : d.risk === 'Medium' ? 2 : 0)} pathOptions={{ color: riskColor(d.risk), fillOpacity: 0.9, weight: 1 }}>
-                      <Popup>
-                        <div style={{minWidth:200}}>
-                          <div className="font-semibold">{d.name}</div>
-                          <div className="text-sm" style={{color: riskColor(d.risk)}}>{d.risk} risk</div>
-                          {advs.length > 0 && (
-                            <div className="mt-2 text-xs">
-                              <div className="font-medium">Advisories</div>
-                              <ul className="mt-1 space-y-1">
-                                {advs.map(a => (
-                                  <li key={a.id} className="text-xs elevated p-1">
-                                    <div className="font-semibold">{a.title}</div>
-                                    <div className="text-xs text-gray-500">{a.type} • {a.severity}</div>
-                                    <div className="text-xs mt-1">{a.description}</div>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </Popup>
+          {/* Left Column - Map & Destinations */}
+          <div className="col-span-12 lg:col-span-8 space-y-6">
+            {/* Risk Map */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <h3 className="font-semibold mb-2" style={{color:'var(--text-color)'}}>Risk Map</h3>
+              <p className="text-sm mb-4" style={{color:'var(--text-muted)'}}>Color-coded destinations by risk level</p>
+              
+              <div style={{height: 380}} className="rounded-lg overflow-hidden" >
+                <MapContainer center={[20,0]} zoom={2} style={{ height: '100%', width: '100%' }} scrollWheelZoom={false}>
+                  <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {destinations.map(d => (
+                    <CircleMarker key={d.id} center={[d.lat, d.lng]} radius={10} pathOptions={{ color: riskColor(d.risk), fillColor: riskColor(d.risk), fillOpacity: 0.8, weight: 2 }}>
+                      <Popup><div className="font-semibold">{d.name}</div><div style={{color: riskColor(d.risk)}}>{d.risk} Risk</div></Popup>
                     </CircleMarker>
-                  );
-                })}
-              </MapContainer>
-            </div>
-
-            <div className="mt-3 flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('Low')}} /> Low</div>
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('Medium')}} /> Medium</div>
-              <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('High')}} /> High</div>
-              <div className="ml-6 text-xs text-gray-500">Advisory types: political, weather, health, other — severity influences risk level.</div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {destinations.map(d => (
-                <div key={d.id} className="p-3 elevated">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">{d.name}</div>
-                    <div className="text-sm" style={{color: riskColor(d.risk)}}>{d.risk}</div>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">Adjust risk</div>
-                  <div className="mt-2 flex gap-2">
-                    <button type="button" onClick={()=> setRisk(d.id, 'Low')} className="px-2 py-1 bg-green-100 text-green-700 rounded text-sm">Low</button>
-                    <button type="button" onClick={()=> setRisk(d.id, 'Medium')} className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-sm">Medium</button>
-                    <button type="button" onClick={()=> setRisk(d.id, 'High')} className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">High</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="col-span-4 space-y-4">
-            <div className="elevated p-3">
-              <h3 className="font-semibold mb-2">Advisories</h3>
-              <div className="text-xs text-gray-500 mb-2">Auto-alerts and advisories</div>
-                <div className="flex items-start gap-2 mb-2">
-                  <button type="button" onClick={()=> setShowAdvForm(s => !s)} className="px-2 py-1 elevated text-xs">{showAdvForm ? 'Close form' : 'New advisory'}</button>
-                  <div className="text-xs text-gray-400">Advisories update risk for destinations. Types: political / weather / health / other.</div>
-                </div>
-
-                { showAdvForm && (
-                  <div className="p-2 elevated mb-2">
-                    <div className="text-xs text-gray-600 mb-2">Create advisory</div>
-                    <div className="grid grid-cols-1 gap-2">
-                      <select className="border p-2 text-sm" value={advForm.destId} onChange={(e)=> setAdvForm({...advForm, destId: e.target.value})}>
-                        {destinations.map(d=> (<option key={d.id} value={d.id}>{d.name}</option>))}
-                      </select>
-                      <select className="border p-2 text-sm" value={advForm.type} onChange={(e)=> setAdvForm({...advForm, type: e.target.value})}>
-                        <option value="political">Political</option>
-                        <option value="weather">Weather</option>
-                        <option value="health">Health</option>
-                        <option value="other">Other</option>
-                      </select>
-                      <select className="border p-2 text-sm" value={advForm.severity} onChange={(e)=> setAdvForm({...advForm, severity: e.target.value})}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                      </select>
-                      <input className="border p-2 text-sm" placeholder="Title" value={advForm.title} onChange={(e)=> setAdvForm({...advForm, title: e.target.value})} />
-                      <textarea className="border p-2 text-sm" placeholder="Description" value={advForm.description} onChange={(e)=> setAdvForm({...advForm, description: e.target.value})} />
-                      <div className="flex gap-2">
-                        <button type="button" onClick={()=> { const adv = { id: generateId('adv'), destId: advForm.destId, title: advForm.title || 'Manual advisory', type: advForm.type, severity: advForm.severity, description: advForm.description, ts: new Date().toISOString() }; processAdvisory(adv); setShowAdvForm(false); setAdvForm({ ...advForm, title:'', description:'' }); }} className="px-3 py-2 bg-purple-700 text-white rounded text-sm">Create</button>
-                        <button type="button" onClick={()=> setShowAdvForm(false)} className="px-3 py-2 elevated text-sm">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="max-h-48 overflow-auto space-y-2">
-                  {advisories.length === 0 && <div className="text-xs text-gray-400">No advisories</div>}
-                  {advisories.map(a => (
-                    <div key={a.id} className="p-2 elevated text-sm">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium">{a.title} <span className="text-xs ml-2 px-2 py-0.5 rounded" style={{background: a.severity==='high' ? '#fee2e2' : a.severity==='medium' ? '#fef3c7' : '#ecfdf5'}}>{a.type} • {a.severity}</span></div>
-                          <div className="text-xs text-gray-400">{new Date(a.ts).toLocaleString()}</div>
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">{a.description}</div>
-                        <div className="mt-2 flex gap-2">
-                        <button type="button" onClick={()=> { sendNotification('ops@example.com', `Acknowledge: ${a.title}`, `Acknowledged advisory ${a.title}`); alert('Acknowledged'); }} className="px-2 py-1 elevated text-xs">Acknowledge</button>
-                        <button type="button" onClick={()=> { navigator.clipboard && navigator.clipboard.writeText(a.description); alert('Copied details to clipboard'); }} className="px-2 py-1 elevated text-xs">Copy</button>
-                      </div>
-                    </div>
                   ))}
-                </div>
+                </MapContainer>
+              </div>
+
+              {/* Legend */}
+              <div className="mt-4 flex items-center gap-6 text-sm">
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('Low')}} /><span style={{color:'var(--text-muted)'}}>Low</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('Medium')}} /><span style={{color:'var(--text-muted)'}}>Medium</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{background: riskColor('High')}} /><span style={{color:'var(--text-muted)'}}>High</span></div>
+              </div>
             </div>
 
-                <div className="elevated p-3">
-              <h3 className="font-semibold mb-2">Traveler Safety</h3>
-              <div className="text-xs text-gray-500 mb-2">Live locations (opt-in), SOS, check-ins</div>
-              <div className="space-y-2">
-                {travelers.map(t => (
-                  <div key={t.id} className="p-2 elevated text-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{t.name}</div>
-                        <div className="text-xs text-gray-400">{t.email}</div>
-                      </div>
-                      <div className="text-xs text-gray-500">{t.optIn ? 'Sharing' : 'Not sharing'}</div>
+            {/* Destination Cards */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <h3 className="font-semibold mb-4" style={{color:'var(--text-color)'}}>Destinations</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {destinations.map(d => (
+                  <div key={d.id} className="p-4 rounded-lg" style={{backgroundColor:'rgba(0,0,0,0.02)', border:'1px solid var(--border-color)'}}>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-sm" style={{color:'var(--text-color)'}}>{d.name}</span>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: riskBg(d.risk), color: riskColor(d.risk)}}>{d.risk}</span>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500">Last check-in: {new Date(t.lastCheckIn).toLocaleString()}</div>
-                    <div className="mt-2 flex gap-2">
-                      <button type="button" onClick={()=> toggleOptIn(t.id)} className="px-2 py-1 elevated text-xs">{t.optIn ? 'Disable sharing' : 'Enable sharing'}</button>
-                      <button type="button" onClick={()=> checkIn(t.id)} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Check-in now</button>
-                      <button type="button" onClick={()=> triggerSOS(t.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">Trigger SOS</button>
-                      <button type="button" onClick={()=> escalateForTraveler(t.id)} className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">Escalate</button>
+                    <div className="flex gap-1">
+                      {['Low','Medium','High'].map(r => (
+                        <button key={r} type="button" onClick={()=> setRisk(d.id, r)} className="flex-1 py-1.5 text-xs font-medium rounded transition-all" style={{backgroundColor: d.risk === r ? riskColor(r) : riskBg(r), color: d.risk === r ? 'white' : riskColor(r)}}>{r[0]}</button>
+                      ))}
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
 
-                { checkInWarnings.length > 0 && (
-                  <div className="p-2 bg-red-50 text-red-700 rounded text-sm">{checkInWarnings.length} traveler(s) haven't checked in within 24h</div>
+          {/* Right Column - Advisories & Travelers */}
+          <div className="col-span-12 lg:col-span-4 space-y-6">
+            {/* Advisories */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Advisories</h3>
+                  <p className="text-xs mt-0.5" style={{color:'var(--text-muted)'}}>{advisories.length} active</p>
+                </div>
+                <button type="button" onClick={()=> setShowAdvForm(true)} className="px-3 py-1.5 text-xs font-medium rounded-lg text-white" style={{backgroundColor:'var(--primary-color)'}}>+ Add</button>
+              </div>
+              
+              <div className="space-y-3 max-h-80 overflow-auto pr-1">
+                {advisories.length === 0 && (
+                  <div className="text-center py-6" style={{color:'var(--text-muted)'}}>
+                    <div className="text-2xl mb-2">📋</div>
+                    <div className="text-sm">No advisories yet</div>
+                  </div>
                 )}
+                {advisories.map(a => (
+                  <div key={a.id} className="p-4 rounded-lg" style={{backgroundColor:'rgba(0,0,0,0.02)', border:'1px solid var(--border-color)'}}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="font-medium text-sm" style={{color:'var(--text-color)'}}>{a.title}</div>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full shrink-0" style={{backgroundColor: a.severity==='high' ? 'rgba(239,68,68,0.1)' : a.severity==='medium' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: a.severity==='high' ? '#ef4444' : a.severity==='medium' ? '#f59e0b' : '#10b981'}}>{a.severity}</span>
+                    </div>
+                    <div className="text-xs mb-2" style={{color:'var(--text-muted)'}}>{new Date(a.ts).toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+                    <div className="text-xs mb-3" style={{color:'var(--text-muted)'}}>{a.description}</div>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={()=> alert('Acknowledged')} className="px-2.5 py-1 text-xs font-medium rounded" style={{backgroundColor:'rgba(99,102,241,0.1)', color:'var(--primary-color)'}}>Acknowledge</button>
+                      <button type="button" onClick={()=> navigator.clipboard?.writeText(a.description)} className="px-2.5 py-1 text-xs font-medium rounded" style={{backgroundColor:'rgba(107,114,128,0.1)', color:'var(--text-muted)'}}>Copy</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="elevated p-3">
-              <h3 className="font-semibold mb-2">Emergency Response</h3>
-              <div className="text-xs text-gray-500 mb-2">24/7 helpline & contact directory</div>
-              <div className="text-sm">
-                <div className="mb-2">Helpline: <a className="text-blue-600" href="tel:+18001234567">+1 800 123 4567</a></div>
-                <div className="mb-2">Security ops: <a className="text-blue-600" href="mailto:security@example.com">security@example.com</a></div>
-                <div className="mb-2">Embassy contacts and hospitals saved in directory</div>
-                <div className="mt-2">
-                  <input id="ec-name" placeholder="Name" className="border rounded p-2 w-full text-sm mb-2" />
-                  <input id="ec-phone" placeholder="Phone" className="border rounded p-2 w-full text-sm mb-2" />
-                  <input id="ec-notes" placeholder="Notes" className="border rounded p-2 w-full text-sm mb-2" />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={()=> { const n = document.getElementById('ec-name'); const p = document.getElementById('ec-phone'); const notes = document.getElementById('ec-notes'); if(n && p) { addEmergencyContact(n.value, p.value, notes?.value); n.value=''; p.value=''; if(notes) notes.value=''; } }} className="px-3 py-2 bg-purple-700 text-white rounded text-sm">Save contact</button>
-                    <button type="button" onClick={()=> { const ec = getEmergencyContacts(); alert(JSON.stringify(ec,null,2)); }} className="px-3 py-2 elevated text-sm">View directory</button>
+            {/* Traveler Safety */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <h3 className="font-semibold mb-1" style={{color:'var(--text-color)'}}>Traveler Safety</h3>
+              <p className="text-xs mb-4" style={{color:'var(--text-muted)'}}>Live locations, SOS, check-ins</p>
+              
+              <div className="space-y-3">
+                {travelers.map(t => (
+                  <div key={t.id} className="p-4 rounded-lg" style={{backgroundColor:'rgba(0,0,0,0.02)', border:'1px solid var(--border-color)'}}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="font-medium text-sm" style={{color:'var(--text-color)'}}>{t.name}</div>
+                        <div className="text-xs" style={{color:'var(--text-muted)'}}>{t.email}</div>
+                      </div>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: t.optIn ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)', color: t.optIn ? '#10b981' : 'var(--text-muted)'}}>{t.optIn ? 'Sharing' : 'Private'}</span>
+                    </div>
+                    <div className="text-xs mb-3" style={{color:'var(--text-muted)'}}>Last check-in: {new Date(t.lastCheckIn).toLocaleDateString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={()=> checkIn(t.id)} className="px-2.5 py-1.5 text-xs font-medium rounded" style={{backgroundColor:'rgba(16,185,129,0.1)', color:'#10b981'}}>Check-in</button>
+                      <button type="button" onClick={()=> triggerSOS(t.id)} className="px-2.5 py-1.5 text-xs font-medium rounded" style={{backgroundColor:'rgba(239,68,68,0.1)', color:'#ef4444'}}>SOS</button>
+                      <button type="button" onClick={()=> escalateForTraveler(t.id)} className="px-2.5 py-1.5 text-xs font-medium rounded" style={{backgroundColor:'rgba(245,158,11,0.1)', color:'#f59e0b'}}>Escalate</button>
+                      <button type="button" onClick={()=> toggleOptIn(t.id)} className="px-2.5 py-1.5 text-xs font-medium rounded" style={{backgroundColor:'rgba(107,114,128,0.1)', color:'var(--text-muted)'}}>{t.optIn ? 'Disable' : 'Enable'}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Emergency Response */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <h3 className="font-semibold mb-1" style={{color:'var(--text-color)'}}>Emergency Response</h3>
+              <p className="text-xs mb-4" style={{color:'var(--text-muted)'}}>24/7 helpline & contacts</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg" style={{backgroundColor:'rgba(239,68,68,0.05)'}}>
+                  <span className="text-xl">📞</span>
+                  <div>
+                    <div className="text-sm font-medium" style={{color:'var(--text-color)'}}>Emergency Hotline</div>
+                    <a className="text-sm font-bold" href="tel:+18001234567" style={{color:'#ef4444'}}>+1 800 123 4567</a>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.05)'}}>
+                  <span className="text-xl">✉️</span>
+                  <div>
+                    <div className="text-sm font-medium" style={{color:'var(--text-color)'}}>Security Team</div>
+                    <a className="text-sm" href="mailto:security@example.com" style={{color:'var(--primary-color)'}}>security@example.com</a>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="elevated p-3">
-              <h3 className="font-semibold mb-2">Notifications</h3>
-              <div className="text-xs text-gray-500 mb-2">Sent messages & alerts</div>
-              <div className="max-h-40 overflow-auto space-y-2 text-sm">
-                { notifications.length === 0 && <div className="text-xs text-gray-400">No notifications</div> }
-                { notifications.map(n => (
-                  <div key={n.id} className="p-2 elevated">
-                    <div className="font-medium">{n.subject}</div>
-                    <div className="text-xs text-gray-400">to {n.to} • {new Date(n.ts).toLocaleString()}</div>
-                    <div className="mt-2 flex gap-2">
-                      <a className="text-xs px-2 py-1 elevated" href={`mailto:${n.to}?subject=${encodeURIComponent(n.subject)}&body=${encodeURIComponent(n.body)}`} target="_blank" rel="noreferrer">Open</a>
-                    </div>
+            {/* Recent Notifications */}
+            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
+              <h3 className="font-semibold mb-1" style={{color:'var(--text-color)'}}>Recent Notifications</h3>
+              <p className="text-xs mb-4" style={{color:'var(--text-muted)'}}>{notifications.length} sent</p>
+              
+              <div className="space-y-2 max-h-40 overflow-auto">
+                {notifications.length === 0 && <div className="text-xs text-center py-4" style={{color:'var(--text-muted)'}}>No notifications</div>}
+                {notifications.slice(0,5).map(n => (
+                  <div key={n.id} className="p-3 rounded-lg" style={{backgroundColor:'rgba(0,0,0,0.02)'}}>
+                    <div className="text-sm font-medium truncate" style={{color:'var(--text-color)'}}>{n.subject}</div>
+                    <div className="text-xs" style={{color:'var(--text-muted)'}}>to {n.to} • {new Date(n.ts).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</div>
                   </div>
-                )) }
+                ))}
               </div>
             </div>
-
           </div>
         </div>
+
+        {/* New Advisory Modal */}
+        {showAdvForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={()=> setShowAdvForm(false)}></div>
+            <div className="relative rounded-xl w-full max-w-md" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
+              <div className="p-5" style={{borderBottom:'1px solid var(--border-color)'}}>
+                <h3 className="text-lg font-semibold" style={{color:'var(--text-color)'}}>Create Advisory</h3>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-muted)'}}>Destination</label>
+                  <select className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} value={advForm.destId} onChange={(e)=> setAdvForm({...advForm, destId: e.target.value})}>
+                    {destinations.map(d=> (<option key={d.id} value={d.id}>{d.name}</option>))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-muted)'}}>Type</label>
+                    <select className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} value={advForm.type} onChange={(e)=> setAdvForm({...advForm, type: e.target.value})}>
+                      <option value="political">Political</option>
+                      <option value="weather">Weather</option>
+                      <option value="health">Health</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-muted)'}}>Severity</label>
+                    <select className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} value={advForm.severity} onChange={(e)=> setAdvForm({...advForm, severity: e.target.value})}>
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-muted)'}}>Title</label>
+                  <input className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} placeholder="Advisory title" value={advForm.title} onChange={(e)=> setAdvForm({...advForm, title: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{color:'var(--text-muted)'}}>Description</label>
+                  <textarea className="w-full p-2.5 text-sm rounded-lg resize-none" rows={3} style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} placeholder="Details about the advisory" value={advForm.description} onChange={(e)=> setAdvForm({...advForm, description: e.target.value})} />
+                </div>
+              </div>
+              <div className="p-5 flex justify-end gap-2" style={{borderTop:'1px solid var(--border-color)'}}>
+                <button type="button" onClick={()=> setShowAdvForm(false)} className="px-4 py-2 text-sm font-medium rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>Cancel</button>
+                <button type="button" onClick={()=> { const adv = { id: generateId('adv'), destId: advForm.destId, title: advForm.title || 'New Advisory', type: advForm.type, severity: advForm.severity, description: advForm.description, ts: new Date().toISOString() }; processAdvisory(adv); setShowAdvForm(false); setAdvForm({...advForm, title:'', description:''}); }} className="px-4 py-2 text-sm font-medium rounded-lg text-white" style={{backgroundColor:'var(--primary-color)'}}>Create Advisory</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Emergency Contacts Modal */}
+        {showEmergencyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={()=> setShowEmergencyModal(false)}></div>
+            <div className="relative rounded-xl w-full max-w-md" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
+              <div className="p-5" style={{borderBottom:'1px solid var(--border-color)'}}>
+                <h3 className="text-lg font-semibold" style={{color:'var(--text-color)'}}>Emergency Contacts</h3>
+              </div>
+              <div className="p-5">
+                <div className="space-y-3 mb-4 max-h-48 overflow-auto">
+                  {getEmergencyContacts().length === 0 && <div className="text-sm text-center py-4" style={{color:'var(--text-muted)'}}>No contacts saved</div>}
+                  {getEmergencyContacts().map(ec => (
+                    <div key={ec.id} className="p-3 rounded-lg" style={{backgroundColor:'rgba(0,0,0,0.02)', border:'1px solid var(--border-color)'}}>
+                      <div className="font-medium text-sm" style={{color:'var(--text-color)'}}>{ec.name}</div>
+                      <div className="text-sm" style={{color:'var(--primary-color)'}}>{ec.phone}</div>
+                      {ec.notes && <div className="text-xs mt-1" style={{color:'var(--text-muted)'}}>{ec.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
+                  <div className="text-sm font-medium mb-3" style={{color:'var(--text-color)'}}>Add New Contact</div>
+                  <div className="space-y-2">
+                    <input id="ec-name" placeholder="Name" className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} />
+                    <input id="ec-phone" placeholder="Phone" className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} />
+                    <input id="ec-notes" placeholder="Notes (optional)" className="w-full p-2.5 text-sm rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} />
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 flex justify-end gap-2" style={{borderTop:'1px solid var(--border-color)'}}>
+                <button type="button" onClick={()=> setShowEmergencyModal(false)} className="px-4 py-2 text-sm font-medium rounded-lg" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>Close</button>
+                <button type="button" onClick={()=> { const n = document.getElementById('ec-name'); const p = document.getElementById('ec-phone'); const notes = document.getElementById('ec-notes'); if(n?.value && p?.value) { addEmergencyContact(n.value, p.value, notes?.value || ''); n.value=''; p.value=''; if(notes) notes.value=''; setShowEmergencyModal(false); setShowEmergencyModal(true); } }} className="px-4 py-2 text-sm font-medium rounded-lg text-white" style={{backgroundColor:'var(--primary-color)'}}>Save Contact</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
