@@ -277,7 +277,7 @@ export default function Analytics(){
               <div className="rounded-xl p-5" style={{backgroundColor:'#ffffff', border:'1px solid #e5e7eb', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
                 <h4 className="font-semibold mb-4" style={{color:'#1f2937'}}>Spend breakdown</h4>
                 <div className="flex items-center justify-center" style={{height:260}}>
-                  <CorporateDonut data={spendByCategory} colors={['#818cf8','#a5b4fc','#93c5fd','#a7f3d0','#fde68a']} size={180} onSliceClick={(it)=>{ setSelectedSlice(it.name); }} />
+                  <CorporateDonut data={spendByCategory} colors={['#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa']} size={180} onSliceClick={(it)=>{ setSelectedSlice(it.name); }} />
                 </div>
               </div>
             </div>
@@ -307,7 +307,7 @@ export default function Analytics(){
               <div className="rounded-xl p-5" style={{backgroundColor:'#ffffff', border:'1px solid #e5e7eb', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
                 <h4 className="font-semibold mb-4" style={{color:'#1f2937'}}>ESG / CO₂ (estimate)</h4>
                 <div className="flex items-center justify-center" style={{height:180}}>
-                  <CorporateDonut data={co2ByDestination} colors={['#818cf8','#a5b4fc','#93c5fd','#a7f3d0','#fde68a']} size={150} onSliceClick={(it)=> setSelectedSlice(it.name)} />
+                  <CorporateDonut data={co2ByDestination} colors={['#60a5fa','#34d399','#fbbf24','#f87171','#a78bfa']} size={150} onSliceClick={(it)=> setSelectedSlice(it.name)} />
                 </div>
               </div>
             </div>

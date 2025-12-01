@@ -36,7 +36,7 @@ const INITIAL_SUMMARY = {
 
 // reasonsData removed (sample/demo data). Charts will render from real data or remain empty until data arrives.
 
-const COLORS = ['#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff', '#eef2ff', '#93c5fd', '#bae6fd', '#a7f3d0', '#fde68a'];
+const COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8', '#4ade80', '#fb923c', '#f472b6'];
 
 export default function TravelDashboard() {
   const navigate = useNavigate();
@@ -735,18 +735,19 @@ export default function TravelDashboard() {
               <div className="col-span-5 elevated">
                 <div className="space-y-5">
                   <div
-                    className="bg-gradient-to-r from-indigo-400 to-indigo-300 text-white rounded-lg p-4 flex items-center justify-between kpi-card-clickable elevated"
+                    className="rounded-lg p-4 flex items-center justify-between kpi-card-clickable elevated"
+                    style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white' }}
                     onClick={() => toggleExpand('flights') }
                     role="button"
                     tabIndex={0}
                   >
                     <div>
-                      <div className="text-xs uppercase opacity-90">Flights</div>
+                      <div className="text-xs uppercase" style={{ opacity: 0.9 }}>Flights</div>
                       <div className="text-2xl font-bold">{summary.flightsCount ?? 0}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm">{(summary.airfare || 0).toLocaleString()}</div>
-                      <div className="text-xs mt-1"><span className="text-indigo-100">{Math.round(((summary.flightsCount || 0) > 0 ? ((summary.flightsCount || 0) / Math.max(1, summary.trips || 1)) * 100 : 0))}% Business</span></div>
+                      <div className="text-sm font-medium">{(summary.airfare || 0).toLocaleString()}</div>
+                      <div className="text-xs mt-1" style={{ color: '#fde68a' }}>{Math.round(((summary.flightsCount || 0) > 0 ? ((summary.flightsCount || 0) / Math.max(1, summary.trips || 1)) * 100 : 0))}% Business</div>
                     </div>
                   </div>
                   {expandedCard === 'flights' && (
@@ -896,7 +897,7 @@ function Faux3DBarChart({ data }){
 // Top Destinations horizontal bar chart (simple, accessible, static SVG)
 function TopDestinationsChart({ data = [] }){
   // reuse DynamicPieChart for consistent look & interactions
-  const colors = ['#818cf8', '#a5b4fc', '#c7d2fe', '#93c5fd', '#bae6fd', '#a7f3d0', '#fde68a'];
+  const colors = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#38bdf8', '#4ade80'];
   const formatted = (data || []).map(d => ({ name: d.label, value: d.value }));
 
   return (
