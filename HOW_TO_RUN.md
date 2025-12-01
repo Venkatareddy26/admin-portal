@@ -5,6 +5,39 @@
 1. **Node.js** (v18 or higher) - [Download](https://nodejs.org/)
 2. **PostgreSQL** (v15 or higher) - [Download](https://www.postgresql.org/download/)
 
+---
+
+## 🚀 EASIEST METHOD: Use the Database Dump
+
+### Step 1: Create Database
+```bash
+psql -U postgres -c "CREATE DATABASE mva_db;"
+```
+
+### Step 2: Import the Dump
+```bash
+cd project/backend
+psql -U postgres -d mva_db -f db_dump.sql
+```
+
+### Step 3: Configure .env
+```bash
+cp .env.example .env
+# Edit .env with your PostgreSQL password
+```
+
+### Step 4: Start the App
+```bash
+npm install
+npm start
+```
+
+**Done!** Open http://localhost:5173
+
+---
+
+## Alternative Method: Manual Setup
+
 ## Step 1: Clone the Repository
 
 ```bash
