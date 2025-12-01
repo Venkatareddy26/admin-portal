@@ -298,25 +298,40 @@ export default function TravelDashboard() {
 
             {/* Stats Row */}
             <section className="grid grid-cols-5 gap-4 mb-8">
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-slate-800">{summary.trips || 0}</div>
-                <div className="text-sm text-gray-500">Total Trips</div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }}>📋</div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{summary.trips || 0}</div>
+                  <div className="text-xs text-gray-500">Total Trips</div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-slate-800">{summary.travelers || 0}</div>
-                <div className="text-sm text-gray-500">Travelers</div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: 'white' }}>👥</div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{summary.travelers || 0}</div>
+                  <div className="text-xs text-gray-500">Travelers</div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-slate-800">{summary.destinations || 0}</div>
-                <div className="text-sm text-gray-500">Destinations</div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white' }}>📍</div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{summary.destinations || 0}</div>
+                  <div className="text-xs text-gray-500">Destinations</div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-slate-800">{summary.avgPlanBook}</div>
-                <div className="text-sm text-gray-500">Avg. Booking Lead</div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>⏱️</div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{summary.avgPlanBook}</div>
+                  <div className="text-xs text-gray-500">Avg. Booking Lead</div>
+                </div>
               </div>
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className="text-2xl font-bold text-slate-800">{summary.flightsCount || 0}</div>
-                <div className="text-sm text-gray-500">Flights Booked</div>
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ background: 'linear-gradient(135deg, #ec4899, #db2777)', color: 'white' }}>✈️</div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-800">{summary.flightsCount || 0}</div>
+                  <div className="text-xs text-gray-500">Flights Booked</div>
+                </div>
               </div>
             </section>
 
