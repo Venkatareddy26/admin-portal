@@ -1,15 +1,28 @@
 import { pool } from '../config/db.js';
 
+// Cache for expenses (10 second TTL)
+let expenseCache = { data: null, time: 0 };
+const EXPENSE_CACHE_TTL = 10000;
+
 export const getExpenses = async (req, res) => {
   try {
+    // Return cached data if fresh
+    if (expenseCache.data && (Date.now() - expenseCache.time) < EXPENSE_CACHE_TTL) {
+      return res.json(expenseCache.data);
+    }
+
+    // Single combined query for expenses and total
     const result = await pool.query(`
       SELECT 
         id, trip_id as "tripId", category, vendor, amount, 
-        description, expense_date as date
+        description, expense_date as date,
+        (SELECT COALESCE(SUM(amount), 0) FROM expenses) as total_expense
       FROM expenses
       ORDER BY expense_date DESC
       LIMIT 500
     `);
+    
+    const totalExpense = result.rows.length > 0 ? Number(result.rows[0].total_expense) || 0 : 0;
     
     const expenses = result.rows.map(r => ({
       id: r.id,
@@ -21,15 +34,22 @@ export const getExpenses = async (req, res) => {
       date: r.date
     }));
     
-    const totalRes = await pool.query(`SELECT COALESCE(SUM(amount),0) AS total FROM expenses`);
-    const totalExpense = Number(totalRes.rows[0].total) || 0;
+    const response = { success: true, expenses, totalExpense };
     
-    return res.json({ success: true, expenses, totalExpense });
+    // Cache the response
+    expenseCache = { data: response, time: Date.now() };
+    
+    return res.json(response);
   } catch (err) {
     console.error('getExpenses error', err);
     return res.status(500).json({ success: false, error: err.message, expenses: [], totalExpense: 0 });
   }
 };
+
+// Invalidate cache on mutations
+function invalidateExpenseCache() {
+  expenseCache = { data: null, time: 0 };
+}
 
 export const createExpense = async (req, res) => {
   try {
@@ -41,6 +61,7 @@ export const createExpense = async (req, res) => {
       RETURNING *
     `, [tripId, category, vendor, amount, description, date]);
 
+    invalidateExpenseCache(); // Clear cache on create
     return res.json({ success: true, expense: result.rows[0] });
   } catch (err) {
     console.error('createExpense error', err);
@@ -65,6 +86,7 @@ export const updateExpense = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Expense not found' });
     }
 
+    invalidateExpenseCache(); // Clear cache on update
     return res.json({ success: true, expense: result.rows[0] });
   } catch (err) {
     console.error('updateExpense error', err);
@@ -83,6 +105,7 @@ export const deleteExpense = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Expense not found' });
     }
 
+    invalidateExpenseCache(); // Clear cache on delete
     return res.json({ success: true, message: 'Expense deleted successfully' });
   } catch (err) {
     console.error('deleteExpense error', err);

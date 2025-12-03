@@ -1,9 +1,25 @@
-// Centralized API configuration for Admin Portal
-// This will connect to Employee Portal in the future
+// Centralized API configuration with caching and request deduplication
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-// API helper with error handling
+// Request cache for GET requests (5 second TTL)
+const requestCache = new Map();
+const CACHE_TTL = 5000;
+
+// In-flight request deduplication
+const pendingRequests = new Map();
+
+// Clean expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of requestCache.entries()) {
+    if (now - value.time > CACHE_TTL) {
+      requestCache.delete(key);
+    }
+  }
+}, 10000);
+
+// API helper with caching, deduplication, and error handling
 async function apiCall(endpoint, options = {}) {
   const token = localStorage.getItem('app_token');
   const headers = {
@@ -12,26 +28,82 @@ async function apiCall(endpoint, options = {}) {
     ...options.headers
   };
 
-  try {
-    const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-    const data = await res.json();
-    
-    if (!res.ok) {
-      throw new Error(data.error || `HTTP ${res.status}`);
+  const method = options.method || 'GET';
+  const cacheKey = `${method}:${endpoint}:${JSON.stringify(options.body || '')}`;
+
+  // For GET requests, check cache first
+  if (method === 'GET') {
+    const cached = requestCache.get(cacheKey);
+    if (cached && (Date.now() - cached.time) < CACHE_TTL) {
+      return cached.data;
     }
-    
-    return data;
-  } catch (err) {
-    console.error(`API Error [${endpoint}]:`, err);
-    throw err;
+
+    // Check for in-flight request to deduplicate
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey);
+    }
   }
+
+  // Create the request promise
+  const requestPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      // Cache successful GET responses
+      if (method === 'GET') {
+        requestCache.set(cacheKey, { data, time: Date.now() });
+      } else {
+        // Invalidate related caches on mutations
+        invalidateCache(endpoint);
+      }
+      
+      return data;
+    } catch (err) {
+      console.error(`API Error [${endpoint}]:`, err);
+      throw err;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+
+  // Store pending request for deduplication
+  if (method === 'GET') {
+    pendingRequests.set(cacheKey, requestPromise);
+  }
+
+  return requestPromise;
+}
+
+// Invalidate cache for related endpoints
+function invalidateCache(endpoint) {
+  const patterns = ['/api/trips', '/api/expenses', '/api/kpi', '/api/dashboard'];
+  for (const pattern of patterns) {
+    if (endpoint.includes(pattern.replace('/api/', ''))) {
+      for (const key of requestCache.keys()) {
+        if (key.includes(pattern)) {
+          requestCache.delete(key);
+        }
+      }
+    }
+  }
+}
+
+// Manual cache clear (useful after login/logout)
+export function clearApiCache() {
+  requestCache.clear();
+  pendingRequests.clear();
 }
 
 // Auth API
 export const auth = {
   login: (email, password) => apiCall('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   register: (data) => apiCall('/api/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => apiCall('/api/auth/logout', { method: 'POST' }),
+  logout: () => { clearApiCache(); return apiCall('/api/auth/logout', { method: 'POST' }); },
   getProfile: () => apiCall('/api/auth/profile'),
 };
 
@@ -86,10 +158,10 @@ export const dashboard = {
   },
 };
 
-// Real-time notifications (for future Employee Portal integration)
+// Real-time notifications
 export const notifications = {
   getAll: () => apiCall('/api/notifications'),
   markRead: (id) => apiCall(`/api/notifications/${id}/read`, { method: 'POST' }),
 };
 
-export default { auth, trips, expenses, documents, policies, risk, dashboard, notifications };
+export default { auth, trips, expenses, documents, policies, risk, dashboard, notifications, clearApiCache };

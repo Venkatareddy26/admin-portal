@@ -19,9 +19,32 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Performance: Enable compression for responses
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  next();
+});
+
+// CORS with caching
+app.use(cors({
+  origin: true,
+  credentials: true,
+  maxAge: 86400 // Cache preflight for 24 hours
+}));
+
+// JSON parsing with size limit
+app.use(express.json({ limit: '10mb' }));
+
+// Request logging (minimal)
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) console.log(`⚠️ Slow request: ${req.method} ${req.path} - ${duration}ms`);
+  });
+  next();
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -36,12 +59,31 @@ app.use("/api/trips", tripsRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/kpi", kpiRoutes);
 
-// serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files with caching
+app.use('/uploads', express.static('uploads', {
+  maxAge: '1d',
+  etag: true
+}));
+
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Base route
 app.get("/", (req, res) => {
   res.send("✅ Backend is running successfully!");
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ success: false, error: 'Endpoint not found' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ success: false, error: 'Internal server error' });
 });
 
 // Server setup

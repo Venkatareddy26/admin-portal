@@ -1,7 +1,20 @@
 import { pool } from '../config/db.js';
 
+// Cache for trips (10 second TTL)
+let tripsCache = { data: null, time: 0 };
+const TRIPS_CACHE_TTL = 10000;
+
+function invalidateTripsCache() {
+  tripsCache = { data: null, time: 0 };
+}
+
 export const getTrips = async (req, res) => {
   try {
+    // Return cached data if fresh
+    if (tripsCache.data && (Date.now() - tripsCache.time) < TRIPS_CACHE_TTL) {
+      return res.json(tripsCache.data);
+    }
+
     const result = await pool.query(`
       SELECT 
         id, destination, start_date, end_date, status, 
@@ -30,7 +43,12 @@ export const getTrips = async (req, res) => {
       attachments: []
     }));
     
-    return res.json({ success: true, trips });
+    const response = { success: true, trips };
+    
+    // Cache the response
+    tripsCache = { data: response, time: Date.now() };
+    
+    return res.json(response);
   } catch (err) {
     console.error('getTrips error', err);
     return res.status(500).json({ success: false, error: err.message, trips: [] });
@@ -52,6 +70,7 @@ export const createTrip = async (req, res) => {
       RETURNING *
     `, [destination, start, end, requester, requesterEmail, department, purpose, costEstimate, riskLevel]);
 
+    invalidateTripsCache(); // Clear cache on create
     return res.json({ success: true, trip: result.rows[0] });
   } catch (err) {
     console.error('createTrip error', err);
@@ -75,6 +94,7 @@ export const updateTrip = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Trip not found' });
     }
 
+    invalidateTripsCache(); // Clear cache on update
     return res.json({ success: true, trip: result.rows[0] });
   } catch (err) {
     console.error('updateTrip error', err);
@@ -88,6 +108,7 @@ export const deleteTrip = async (req, res) => {
 
     await pool.query('DELETE FROM trips WHERE id = $1', [id]);
 
+    invalidateTripsCache(); // Clear cache on delete
     return res.json({ success: true });
   } catch (err) {
     console.error('deleteTrip error', err);

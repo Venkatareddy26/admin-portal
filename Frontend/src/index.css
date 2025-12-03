@@ -1138,3 +1138,114 @@ textarea:focus {
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ========== GLOBAL RESPONSIVE OPTIMIZATIONS ========== */
+
+/* Mobile-first responsive utilities */
+@media (max-width: 639px) {
+  .container { padding: 0.75rem; }
+  .elevated { padding: 1rem; border-radius: 0.75rem; }
+  .kpi-grid { gap: 0.75rem; }
+  .kpi-card { padding: 1rem; }
+  .kpi-card-value { font-size: 1.5rem; }
+  .content-card { padding: 1rem; }
+  .quick-actions { gap: 0.75rem; }
+  .welcome-title { font-size: 1.5rem; }
+  .section-title { font-size: 1rem; }
+}
+
+/* Tablet responsive */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .quick-actions { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Desktop responsive */
+@media (min-width: 1024px) {
+  .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+  .quick-actions { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .btn, .nav-button, .action-card, .kpi-card {
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active, .nav-button:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Print styles */
+@media print {
+  .sidebar, .mobile-menu-toggle, .header-actions, .nav-button {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  .elevated, .kpi-card, .content-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .btn-primary {
+    border: 2px solid currentColor;
+  }
+  .kpi-card, .content-card, .elevated {
+    border-width: 2px;
+  }
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
