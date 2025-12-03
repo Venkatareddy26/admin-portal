@@ -187,7 +187,24 @@ export default function Analytics(){
                 {selectedSlice && <button type="button" onClick={() => { setSelectedSlice(null); setAnnounce('Donut selection cleared'); }} className="px-2 py-1 rounded-full text-xs" style={{backgroundColor:'#e5e7eb', color:'#374151'}}>Filter: {selectedSlice} ✕</button>}
               </>
             )}
-            <button type="button" onClick={() => { setDeptFilter('All'); setRegionFilter('All'); setQ(''); setSelectedSlice(null); setStartDate('2025-07-01'); setEndDate('2025-12-31'); setAnnounce('All filters cleared'); }} className="px-2 py-1 rounded text-xs font-medium" style={{color:'#dc2626'}}>Clear all</button>
+            <button type="button" onClick={() => { setDeptFilter('All'); setRegionFilter('All'); setQ(''); setSelectedSlice(null); setStartDate('2025-07-01'); setEndDate('2025-12-31'); setAnnounce('All filters cleared'); }} className="px-2 py-1 rounded text-xs font-medium" style={{color:'#6366f1'}}>Clear filters</button>
+            <button type="button" onClick={async () => { 
+              if(!window.confirm('Are you sure you want to delete ALL trips and expenses? This cannot be undone.')) return;
+              try {
+                const res = await fetch(`${API_BASE}/api/analytics/clear`, { method: 'DELETE' });
+                const data = await res.json();
+                if(data.success) {
+                  setTrips([]);
+                  setExpenses([]);
+                  setAnnounce('All data cleared successfully');
+                  alert('All data cleared successfully!');
+                } else {
+                  alert('Failed to clear data: ' + (data.error || 'Unknown error'));
+                }
+              } catch(e) {
+                alert('Error clearing data: ' + e.message);
+              }
+            }} className="px-2 py-1 rounded text-xs font-medium" style={{color:'#dc2626'}}>Clear all data</button>
           </div>
           <div aria-live="polite" className="sr-only">{announce}</div>
         </div>

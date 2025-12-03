@@ -62,3 +62,24 @@ export const getAnalytics = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+
+// Clear all analytics data (trips and expenses)
+export const clearAllData = async (req, res) => {
+  try {
+    // Delete in order due to foreign key constraints
+    await pool.query('DELETE FROM trip_comments');
+    await pool.query('DELETE FROM trip_timeline');
+    await pool.query('DELETE FROM trip_attachments');
+    await pool.query('DELETE FROM expenses');
+    await pool.query('DELETE FROM trips');
+    
+    return res.json({
+      success: true,
+      message: 'All trips and expenses data cleared successfully'
+    });
+  } catch (err) {
+    console.error('clearAllData error', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
