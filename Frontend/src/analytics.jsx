@@ -4,8 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import CorporateDonut from './components/CorporateDonut';
 import TimeSeriesChart from './components/TimeSeriesChart';
 import TripDetailModal from './components/TripDetailModal';
-// Use relative URL to leverage Vite proxy
-const API_BASE = '';
+// Use environment variable or empty string for Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // Utilities
 function csvDownload(filename, rows) {
