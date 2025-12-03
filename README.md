@@ -41,15 +41,16 @@ cd admin-portal/project
 
 # 2. Setup Database
 # Create PostgreSQL database named 'mva_db'
+# Run the SQL dump to create tables and seed data:
+psql -U postgres -d mva_db -f backend/db_dump.sql
 
 # 3. Configure Backend
 cd backend
 cp .env.example .env  # Edit with your DB credentials
 npm install
-node setup-database.js
 
 # 4. Start Backend
-npm start  # Runs on http://localhost:5000
+node server.js  # Runs on http://localhost:5000
 
 # 5. Setup Frontend (new terminal)
 cd ../Frontend
@@ -66,7 +67,9 @@ DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=your_password
 DB_NAME=mva_db
+PORT=5000
 ```
+
 
 ## 🔑 Test Credentials
 
@@ -89,7 +92,7 @@ DB_NAME=mva_db
 |--------|----------|-------------|
 | GET | `/api/trips` | List all trips |
 | POST | `/api/trips` | Create new trip |
-| PUT | `/api/trips/:id` | Update trip |
+| PATCH | `/api/trips/:id` | Update trip |
 | DELETE | `/api/trips/:id` | Delete trip |
 
 ### Expenses
@@ -97,34 +100,43 @@ DB_NAME=mva_db
 |--------|----------|-------------|
 | GET | `/api/expenses` | List expenses |
 | POST | `/api/expenses` | Create expense |
+| PUT | `/api/expenses/:id` | Update expense |
+| DELETE | `/api/expenses/:id` | Delete expense |
 
-### Dashboard & Analytics
+### KPI & Analytics
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/kpi` | KPI metrics |
+| GET | `/api/kpi?range=30d` | KPI metrics (airfare, hotels, trips count) |
 | GET | `/api/dashboard` | Dashboard summary |
 | GET | `/api/analytics` | Analytics data |
 
-### Other
+### Policy
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/policy` | List policies |
+| POST | `/api/policy` | Create policy |
+| PUT | `/api/policy/:id` | Update policy |
+| DELETE | `/api/policy/:id` | Delete policy |
+
+### Documents
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/documents` | List documents |
+| POST | `/api/documents` | Upload document |
+| PUT | `/api/documents/:id` | Update document |
+| DELETE | `/api/documents/:id` | Delete document |
 
 ## ✅ API Test Results
 
 All endpoints tested and working:
 
-| Endpoint | Status |
-|----------|--------|
-| `/api/auth/login` | ✅ Working |
-| `/api/trips` | ✅ Working |
-| `/api/expenses` | ✅ Working |
-| `/api/kpi` | ✅ Working |
-| `/api/dashboard` | ✅ Working |
-| `/api/analytics` | ✅ Working |
-| `/api/policy` | ✅ Working |
-| `/api/documents` | ✅ Working |
+| Endpoint | Status | Sample Response |
+|----------|--------|-----------------|
+| `/api/trips` | ✅ Working | Returns trips with timeline, comments |
+| `/api/expenses` | ✅ Working | Returns categorized expenses |
+| `/api/kpi?range=30d` | ✅ Working | Returns airfare, hotels, total spend |
+| `/api/policy` | ✅ Working | Returns travel, leave, expense policies |
+| `/api/documents` | ✅ Working | Returns passport, visa, insurance docs |
 
 ## 👥 User Roles
 
@@ -135,24 +147,116 @@ All endpoints tested and working:
 | finance | Manage expenses, generate reports |
 | admin | Full system access |
 
+
 ## 📁 Project Structure
 
 ```
 project/
 ├── backend/
-│   ├── controllers/     # API controllers
-│   ├── routes/          # Express routes
-│   ├── config/          # Database config
-│   └── server.js        # Entry point
+│   ├── config/
+│   │   └── db.js              # Database connection
+│   ├── controllers/
+│   │   ├── analyticsController.js
+│   │   ├── authController.js
+│   │   ├── dashboardController.js
+│   │   ├── documentsController.js
+│   │   ├── expenseController.js
+│   │   ├── kpiController.js
+│   │   ├── policyController.js
+│   │   ├── riskController.js
+│   │   └── tripsController.js
+│   ├── routes/
+│   │   ├── analyticsRoutes.js
+│   │   ├── authRoutes.js
+│   │   ├── dashboardRoutes.js
+│   │   ├── documentsRoutes.js
+│   │   ├── expenseRoutes.js
+│   │   ├── kpiRoutes.js
+│   │   ├── policyRoutes.js
+│   │   ├── riskRoutes.js
+│   │   ├── tripsRoutes.js
+│   │   └── userRoutes.js
+│   ├── uploads/               # File uploads directory
+│   ├── .env.example
+│   ├── db_dump.sql            # Database schema & seed data
+│   ├── package.json
+│   └── server.js              # Express entry point
+│
 ├── Frontend/
 │   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── dashboard.jsx
-│   │   ├── trips.jsx
-│   │   └── ...
-│   └── index.html
-└── docs/                # Documentation
+│   │   ├── components/        # Reusable UI components
+│   │   │   ├── CorporateDonut.js
+│   │   │   ├── GlobalMap.js
+│   │   │   ├── KpiCard.js
+│   │   │   ├── ProfileMenu.js
+│   │   │   ├── RiskFeed.js
+│   │   │   ├── theme-toggle.js
+│   │   │   ├── TimeSeriesChart.js
+│   │   │   ├── TripDetailModal.js
+│   │   │   └── WidgetManager.js
+│   │   ├── pages/             # Page components (routes)
+│   │   │   ├── analytics.js
+│   │   │   ├── dashboard.js
+│   │   │   ├── documents.js
+│   │   │   ├── expense.js
+│   │   │   ├── login.js
+│   │   │   ├── policy.js
+│   │   │   ├── profile.js
+│   │   │   ├── register.js
+│   │   │   ├── reports.js
+│   │   │   ├── risk.js
+│   │   │   ├── settings.js
+│   │   │   └── trips.js
+│   │   ├── services/          # API & external services
+│   │   │   ├── api.js
+│   │   │   ├── auth.js
+│   │   │   └── sse.js
+│   │   ├── styles/            # CSS stylesheets
+│   │   │   ├── analytics.css
+│   │   │   ├── dashboard.css
+│   │   │   ├── documents.css
+│   │   │   ├── expense.css
+│   │   │   ├── policy.css
+│   │   │   ├── risk.css
+│   │   │   └── trips.css
+│   │   ├── utils/             # Utility functions
+│   │   │   └── config.js
+│   │   ├── index.css          # Global styles
+│   │   └── main.js            # React entry point
+│   ├── .env.example
+│   ├── index.html
+│   ├── package.json
+│   ├── postcss.config.cjs
+│   ├── tailwind.config.cjs
+│   └── vite.config.js
+│
+├── docs/
+│   ├── BACKEND_API.md
+│   ├── DATABASE_SCHEMA.md
+│   ├── DEVELOPER_SETUP.md
+│   └── FRONTEND_GUIDE.md
+│
+├── .gitignore
+├── HOW_TO_RUN.md
+├── PROJECT_STRUCTURE.md
+└── README.md
 ```
+
+## 🔄 Recent Changes
+
+### Code Organization (Latest)
+- ✅ Converted all `.jsx` files to `.js` extension
+- ✅ Separated CSS styles into dedicated `styles/` folder
+- ✅ Organized pages into `pages/` folder
+- ✅ Moved services to `services/` folder (api.js, auth.js, sse.js)
+- ✅ Moved utilities to `utils/` folder (config.js)
+- ✅ Removed unused files and build artifacts
+- ✅ Updated Vite config to support JSX in .js files
+
+### Database
+- ✅ Fixed policies table schema (added title, category, status columns)
+- ✅ Fixed documents table schema (added name, type, expiry columns)
+- ✅ All seed data loaded correctly
 
 ## 📚 Documentation
 
@@ -160,6 +264,23 @@ project/
 - [Backend API](docs/BACKEND_API.md)
 - [Frontend Guide](docs/FRONTEND_GUIDE.md)
 - [Database Schema](docs/DATABASE_SCHEMA.md)
+
+## 🚀 Deployment
+
+### Backend
+```bash
+cd backend
+npm install --production
+node server.js
+```
+
+### Frontend
+```bash
+cd Frontend
+npm install
+npm run build    # Creates dist/ folder
+npm run preview  # Preview production build
+```
 
 ## 📄 License
 
