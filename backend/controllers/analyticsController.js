@@ -67,10 +67,10 @@ export const getAnalytics = async (req, res) => {
 // Clear all analytics data (trips and expenses)
 export const clearAllData = async (req, res) => {
   try {
-    // Delete in order due to foreign key constraints
-    await pool.query('DELETE FROM trip_comments');
-    await pool.query('DELETE FROM trip_timeline');
-    await pool.query('DELETE FROM trip_attachments');
+    // Delete in order due to foreign key constraints (ignore if tables don't exist)
+    await pool.query('DELETE FROM trip_comments').catch(() => {});
+    await pool.query('DELETE FROM trip_timeline').catch(() => {});
+    await pool.query('DELETE FROM trip_attachments').catch(() => {});
     await pool.query('DELETE FROM expenses');
     await pool.query('DELETE FROM trips');
     
