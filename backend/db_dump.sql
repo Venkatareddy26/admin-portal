@@ -80,13 +80,22 @@ CREATE TABLE policies (
 CREATE TABLE documents (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(100),
+    type VARCHAR(100) DEFAULT 'other',
+    expiry DATE,
+    notes TEXT,
     size INTEGER,
     path TEXT,
     trip_id INTEGER REFERENCES trips(id) ON DELETE SET NULL,
     uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Sample Documents
+INSERT INTO documents (name, type, expiry, notes) VALUES
+('US Passport', 'passport', '2028-06-15', 'Valid for international travel'),
+('Schengen Visa', 'visa', '2025-03-20', 'Multiple entry visa'),
+('COVID Vaccine Certificate', 'vaccine', '2026-01-01', 'Pfizer - 3 doses'),
+('Travel Insurance Policy', 'insurance', '2025-12-31', 'Covers medical and trip cancellation');
 
 -- Risk Advisories Table
 CREATE TABLE risk_advisories (

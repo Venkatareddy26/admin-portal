@@ -1,407 +1,472 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import DocSearch from './components/DocSearch';
-import DocGroup from './components/DocGroup';
-import DocPreview from './components/DocPreview';
 
-// Use environment variable or Vite proxy
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
-function uid(prefix='d'){ return `${prefix}_${Date.now()}_${Math.floor(Math.random()*9000+1000)}` }
-function readLS(key, fallback){ try{ const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }catch{ return fallback; } }
-function writeLS(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch{}
+const DOC_TYPES = [
+  { id: 'passport', label: 'Passport', icon: '🛂', color: '#6366f1' },
+  { id: 'visa', label: 'Visa', icon: '📋', color: '#8b5cf6' },
+  { id: 'vaccine', label: 'Vaccine Certificate', icon: '💉', color: '#10b981' },
+  { id: 'insurance', label: 'Travel Insurance', icon: '🛡️', color: '#f59e0b' },
+  { id: 'id_card', label: 'ID Card', icon: '🪪', color: '#06b6d4' },
+  { id: 'other', label: 'Other', icon: '📄', color: '#64748b' },
+];
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function Documents(){
+function isExpiringSoon(expiry) {
+  if (!expiry) return false;
+  const days = (new Date(expiry) - new Date()) / (1000 * 60 * 60 * 24);
+  return days > 0 && days <= 30;
+}
+
+function isExpired(expiry) {
+  if (!expiry) return false;
+  return new Date(expiry) < new Date();
+}
+
+export default function Documents() {
   const navigate = useNavigate();
-  const [collapsedPanels, setCollapsedPanels] = useState({});
-  const [employees, setEmployees] = useState([]);
-  const [trips, setTrips] = useState([]);
+  const fileRef = useRef(null);
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editDoc, setEditDoc] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [form, setForm] = useState({
+    type: 'passport',
+    name: '',
+    expiry: '',
+    notes: '',
+    file: null
+  });
 
-  // Fetch data from backend
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const [docsRes, tripsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/documents`),
-          fetch(`${API_BASE}/api/trips`)
-        ]);
-        
-        if (docsRes.ok) {
-          const data = await docsRes.json();
-          if (data.success) setDocs(data.documents || []);
-        }
-        
-        if (tripsRes.ok) {
-          const data = await tripsRes.json();
-          if (data.success) setTrips(data.trips || []);
-        }
-      } catch (e) {
-        console.warn('Failed to fetch documents data', e);
-      } finally {
-        setLoading(false);
+  // Fetch documents
+  async function fetchDocs() {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/api/documents`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) setDocs(data.documents || []);
       }
+    } catch (e) {
+      console.warn('Failed to fetch documents', e);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }, []);
-  const [policies, setPolicies] = useState(()=> readLS('td_doc_policies', { /* destinationName: [ 'passport','vaccine' ] */ }));
-  const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [selectedTrip, setSelectedTrip] = useState('');
-  const [reminders, setReminders] = useState(()=> readLS('td_doc_reminders', []));
-  const [showSignModal, setShowSignModal] = useState(false);
-  const [signTargetDoc, setSignTargetDoc] = useState(null);
-  const [uploadType, setUploadType] = useState('passport');
-  const [uploadExpiry, setUploadExpiry] = useState('');
-  const [uploadNotes, setUploadNotes] = useState('');
-  const canvasRef = useRef(null);
-  const isDrawing = useRef(false);
-  const [filterText, setFilterText] = useState('');
-  const [sortBy, setSortBy] = useState('newest'); // newest | oldest | expiry
-  const [showExpiringOnly, setShowExpiringOnly] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState(null);
+  }
 
-  useEffect(()=> writeLS('td_docs_v1', docs), [docs]);
-  useEffect(()=> writeLS('td_doc_policies', policies), [policies]);
-  useEffect(()=> writeLS('td_doc_reminders', reminders), [reminders]);
+  useEffect(() => { fetchDocs(); }, []);
 
-  // Upload file and store as base64 dataURL (suitable for small files)
-  function handleFileUpload(file, meta){
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const d = {
-        id: uid('doc'),
-        employeeId: meta.employeeId,
-        tripId: meta.tripId || null,
-        type: meta.type || 'other',
-        filename: file.name,
-        dataUrl,
-        uploadedAt: new Date().toISOString(),
-        expiry: meta.expiry || null,
-        signed: false,
-        verified: false,
-        notes: meta.notes || ''
+  // Upload document
+  async function handleUpload() {
+    if (!form.name) { alert('Please enter document name'); return; }
+    
+    try {
+      const formData = new FormData();
+      formData.append('name', form.name);
+      formData.append('type', form.type);
+      formData.append('expiry', form.expiry || '');
+      formData.append('notes', form.notes || '');
+      if (form.file) formData.append('file', form.file);
+
+      const res = await fetch(`${API_BASE}/api/documents`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          await fetchDocs();
+          closeModal();
+          alert('Document uploaded successfully!');
+        }
+      } else {
+        // Fallback: save to local state if backend fails
+        const newDoc = {
+          id: Date.now(),
+          name: form.name,
+          type: form.type,
+          expiry: form.expiry,
+          notes: form.notes,
+          createdAt: new Date().toISOString(),
+          status: 'active'
+        };
+        setDocs(prev => [newDoc, ...prev]);
+        closeModal();
+        alert('Document saved locally');
+      }
+    } catch (e) {
+      // Fallback: save to local state
+      const newDoc = {
+        id: Date.now(),
+        name: form.name,
+        type: form.type,
+        expiry: form.expiry,
+        notes: form.notes,
+        createdAt: new Date().toISOString(),
+        status: 'active'
       };
-      setDocs(s => [d, ...s]);
-    };
-    reader.readAsDataURL(file);
+      setDocs(prev => [newDoc, ...prev]);
+      closeModal();
+    }
   }
 
-  function downloadDoc(doc){
-    try{
-      const arr = doc.dataUrl.split(',');
-      const mime = arr[0].match(/:(.*?);/)[1];
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8 = new Uint8Array(n);
-      while(n--) u8[n] = bstr.charCodeAt(n);
-      const blob = new Blob([u8], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = doc.filename || 'download'; a.click(); URL.revokeObjectURL(url);
-    }catch(e){ alert('Download failed'); }
+  // Update document
+  async function handleUpdate() {
+    if (!editDoc) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/documents/${editDoc.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          type: form.type,
+          expiry: form.expiry,
+          notes: form.notes
+        })
+      });
+
+      if (res.ok) {
+        await fetchDocs();
+      } else {
+        // Fallback: update local state
+        setDocs(prev => prev.map(d => d.id === editDoc.id ? { ...d, ...form } : d));
+      }
+      closeModal();
+    } catch (e) {
+      setDocs(prev => prev.map(d => d.id === editDoc.id ? { ...d, ...form } : d));
+      closeModal();
+    }
   }
 
-  // reminders for expiring docs (within 30 days)
-  useEffect(()=>{
-    const now = Date.now();
-    const soon = now + 1000*60*60*24*30; // 30 days
-    const found = docs.filter(d => d.expiry && new Date(d.expiry).getTime() <= soon).map(d => ({ id: d.id, employeeId: d.employeeId, type: d.type, expiry: d.expiry }));
-    setReminders(found);
-  }, [docs]);
-
-  // signature canvas helpers
-  function startSign(e){
-    const c = canvasRef.current; if(!c) return; isDrawing.current = true; const ctx = c.getContext('2d'); ctx.strokeStyle = '#111'; ctx.lineWidth = 2; ctx.beginPath();
-  }
-  function endSign(){ isDrawing.current = false; }
-  function signMove(e){ if(!isDrawing.current) return; const c = canvasRef.current; const rect = c.getBoundingClientRect(); const x = (e.clientX || e.touches?.[0]?.clientX) - rect.left; const y = (e.clientY || e.touches?.[0]?.clientY) - rect.top; const ctx=c.getContext('2d'); ctx.lineTo(x,y); ctx.stroke(); }
-  function clearSign(){ const c = canvasRef.current; const ctx = c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }
-  function saveSignature(){ const c = canvasRef.current; const data = c.toDataURL('image/png'); if(signTargetDoc){ setDocs(s => s.map(d => d.id === signTargetDoc ? ({ ...d, signed: true, signature: data, signedAt: new Date().toISOString() }) : d)); setShowSignModal(false); setSignTargetDoc(null); } }
-
-  // policy validation per trip: required types per destination name
-  function validateTrip(tripId){ const trip = trips.find(t=>t.id===tripId); if(!trip) return { ok:true, missing:[] }; const dest = trip.destination || trip.destName || ''; const required = policies[dest] || []; const empDocs = docs.filter(d => d.employeeId === trip.employeeId).map(d=>d.type);
-    const missing = required.filter(r => !empDocs.includes(r)); return { ok: missing.length === 0, missing };
+  // Delete document
+  async function handleDelete(id) {
+    if (!window.confirm('Delete this document?')) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/documents/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await fetchDocs();
+      } else {
+        setDocs(prev => prev.filter(d => d.id !== id));
+      }
+    } catch (e) {
+      setDocs(prev => prev.filter(d => d.id !== id));
+    }
   }
 
-  function attachDocToTrip(docId, tripId){ setDocs(s => s.map(d => d.id === docId ? ({ ...d, tripId }) : d)); }
+  function openAddModal() {
+    setEditDoc(null);
+    setForm({ type: 'passport', name: '', expiry: '', notes: '', file: null });
+    setShowModal(true);
+  }
 
-  // add simple policy (destination -> required doc types)
-  function addPolicy(dest, types){ setPolicies(p => ({ ...p, [dest]: types })); }
-
-  // group documents by type for UI sections
-  const docGroupsByType = useMemo(() => {
-    if(!selectedEmployee) return {};
-    const empDocs = docs.filter(d => d.employeeId === selectedEmployee);
-    const groups = {};
-    empDocs.forEach(d => {
-      const t = d.type || 'other';
-      if(!groups[t]) groups[t] = [];
-      groups[t].push(d);
+  function openEditModal(doc) {
+    setEditDoc(doc);
+    setForm({
+      type: doc.type || 'passport',
+      name: doc.name || '',
+      expiry: doc.expiry ? doc.expiry.split('T')[0] : '',
+      notes: doc.notes || '',
+      file: null
     });
-    return groups;
-  }, [docs, selectedEmployee]);
+    setShowModal(true);
+  }
 
-  // collapsed state per group (type)
-  const [collapsedGroups, setCollapsedGroups] = useState({});
-  function toggleGroup(type){ setCollapsedGroups(s => ({ ...s, [type]: !s[type] })); }
+  function closeModal() {
+    setShowModal(false);
+    setEditDoc(null);
+    setForm({ type: 'passport', name: '', expiry: '', notes: '', file: null });
+  }
 
-  // filtered/sorted groups for display
-  const filteredGroups = useMemo(() => {
-    const out = {};
-    Object.entries(docGroupsByType).forEach(([type, items]) => {
-      let list = items.slice();
-      if(filterText){ const f = filterText.toLowerCase(); list = list.filter(d => (d.filename||'').toLowerCase().includes(f) || (d.notes||'').toLowerCase().includes(f)); }
-      if(showExpiringOnly){ const now = Date.now(); const soon = now + 1000*60*60*24*30; list = list.filter(d => d.expiry && new Date(d.expiry).getTime() <= soon); }
-      if(sortBy === 'newest') list.sort((a,b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-      else if(sortBy === 'oldest') list.sort((a,b) => new Date(a.uploadedAt) - new Date(b.uploadedAt));
-      else if(sortBy === 'expiry') list.sort((a,b) => (a.expiry?new Date(a.expiry):0) - (b.expiry?new Date(b.expiry):0));
-      if(list.length) out[type] = list;
-    });
-    return out;
-  }, [docGroupsByType, filterText, sortBy, showExpiringOnly]);
+  // Filter documents
+  const filteredDocs = docs.filter(d => {
+    if (filter !== 'all' && d.type !== filter) return false;
+    if (search && !d.name?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
-  function openPreview(d){ setPreviewDoc(d); }
-  function closePreview(){ setPreviewDoc(null); }
+  // Stats
+  const stats = {
+    total: docs.length,
+    expiring: docs.filter(d => isExpiringSoon(d.expiry)).length,
+    expired: docs.filter(d => isExpired(d.expiry)).length,
+    valid: docs.filter(d => d.expiry && !isExpired(d.expiry) && !isExpiringSoon(d.expiry)).length
+  };
 
-  // download all docs in a group sequentially
-  async function downloadAllInGroup(type){ const items = filteredGroups[type] || []; for(const d of items){ downloadDoc(d); await new Promise(r=>setTimeout(r,120)); } }
+  const getDocType = (type) => DOC_TYPES.find(t => t.id === type) || DOC_TYPES[5];
 
   return (
-    <div className="min-h-screen font-sans" style={{backgroundColor:'var(--bg-color)', color:'var(--text-color)'}}>
-      <div className="max-w-[1200px] mx-auto p-6">
-        {/* Page Header */}
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold" style={{color:'var(--text-color)'}}>Document & Compliance</h1>
-            <p className="text-sm mt-1" style={{color:'var(--text-muted)'}}>Store passports, visas, vaccine certs, insurance & validate per policy</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={()=> navigate(-1)} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}}>← Back</button>
+    <div className="min-h-screen font-sans" style={{ backgroundColor: '#f8fafc' }}>
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <header className="mb-8">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-800">Documents & Compliance</h1>
+              <p className="text-gray-500 mt-1">Store passports, visas, vaccine certs, insurance & validate per policy</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={openAddModal} className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                <span>+</span> Upload Document
+              </button>
+              <button onClick={() => navigate(-1)} className="px-4 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50">← Back</button>
+            </div>
           </div>
         </header>
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Sidebar - Employees */}
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="rounded-xl p-5 sticky top-6" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Employees</h3>
-                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, employees: !s.employees }))}>{collapsedPanels.employees ? 'Expand' : 'Collapse'}</button>
-              </div>
-              
-              <div className={collapsedPanels.employees ? 'hidden' : ''}>
-                {employees.length === 0 ? (
-                  <div className="text-sm py-4 text-center" style={{color:'var(--text-muted)'}}>No employees found</div>
-                ) : (
-                  <ul className="space-y-1">
-                    {employees.map(e => (
-                      <li key={e.id}>
-                        <button 
-                          type="button" 
-                          className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
-                          style={{
-                            backgroundColor: selectedEmployee===e.id ? 'rgba(99,102,241,0.1)' : 'transparent',
-                            color: selectedEmployee===e.id ? 'var(--primary-color)' : 'var(--text-color)',
-                            fontWeight: selectedEmployee===e.id ? '500' : '400'
-                          }}
-                          onClick={()=> setSelectedEmployee(e.id)}
-                        >
-                          {e.name}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {/* Reminders Section */}
-                <div className="mt-6 pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
-                  <h4 className="text-sm font-medium mb-3" style={{color:'var(--text-color)'}}>Reminders</h4>
-                  {reminders.length===0 ? (
-                    <div className="text-xs py-2" style={{color:'var(--text-muted)'}}>No upcoming expiries</div>
-                  ) : (
-                    <div className="space-y-2">
-                      {reminders.map(r => (
-                        <div key={r.id} className="text-xs rounded-lg p-3" style={{backgroundColor:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.2)'}}>
-                          <div className="font-medium" style={{color:'var(--text-color)'}}>{employees.find(x=>x.id===r.employeeId)?.name || '—'}</div>
-                          <div style={{color:'#d97706'}}>{r.type} expires {new Date(r.expiry).toLocaleDateString()}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* Center - Documents */}
-          <section className="col-span-12 lg:col-span-6">
-            <div className="rounded-xl p-5" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Documents</h3>
-                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, documents: !s.documents }))}>{collapsedPanels.documents ? 'Expand' : 'Collapse'}</button>
-              </div>
-              
-              <div className={collapsedPanels.documents ? 'hidden' : ''}>
-                {!selectedEmployee ? (
-                  <div className="text-sm py-8 text-center" style={{color:'var(--text-muted)'}}>
-                    <div className="text-3xl mb-2">📄</div>
-                    Select an employee to manage documents
-                  </div>
-                ) : (
-                  <div>
-                    <div className="sticky-card">
-                      <DocSearch filterText={filterText} setFilterText={setFilterText} sortBy={sortBy} setSortBy={setSortBy} showExpiringOnly={showExpiringOnly} setShowExpiringOnly={setShowExpiringOnly} />
-                    </div>
-                    
-                    {/* Document type summary */}
-                    <div className="mt-4 flex items-center gap-2 flex-wrap">
-                      {(() => { 
-                        const empDocs = docs.filter(d=> d.employeeId===selectedEmployee); 
-                        const counts = empDocs.reduce((acc,d)=> { acc[d.type] = (acc[d.type]||0)+1; return acc; }, {}); 
-                        return Object.entries(counts).length===0 
-                          ? <div className="text-xs" style={{color:'var(--text-muted)'}}>No documents uploaded</div> 
-                          : Object.entries(counts).map(([t,c]) => (
-                            <span key={t} className="px-2 py-1 text-xs rounded-full font-medium" style={{backgroundColor:'rgba(99,102,241,0.1)', color:'var(--primary-color)'}}>{t}: {c}</span>
-                          )); 
-                      })()}
-                    </div>
-
-                    {/* Upload Section */}
-                    <div className="mt-4 p-4 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.03)', border:'1px dashed var(--border-color)'}}>
-                      <div className="text-xs font-medium mb-3" style={{color:'var(--text-muted)'}}>Upload New Document</div>
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input type="file" id="docfile" className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} onChange={(e)=>{ const f = e.target.files && e.target.files[0]; if(!f) return; handleFileUpload(f, { employeeId: selectedEmployee, type: uploadType || 'other', expiry: uploadExpiry || null, notes: uploadNotes || '' }); e.target.value = null; setUploadNotes(''); setUploadExpiry(''); }} />
-                          <select value={uploadType} onChange={e=> setUploadType(e.target.value)} className="text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', minWidth:'120px'}}>
-                            <option value="passport">Passport</option>
-                            <option value="visa">Visa</option>
-                            <option value="vaccine">Vaccine</option>
-                            <option value="insurance">Insurance</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <input type="date" placeholder="Expiry date" value={uploadExpiry} onChange={e=> setUploadExpiry(e.target.value)} className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} />
-                          <input placeholder="Notes (optional)" value={uploadNotes} onChange={e=> setUploadNotes(e.target.value)} className="flex-1 text-sm rounded-lg p-2" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}} />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Document Groups */}
-                    <div className="mt-4 space-y-4">
-                      {Object.keys(filteredGroups).length === 0 && <div className="text-xs py-4 text-center" style={{color:'var(--text-muted)'}}>No documents uploaded or match filters</div>}
-                      {Object.entries(filteredGroups).map(([type, items]) => (
-                        <DocGroup key={type} type={type} items={items} collapsed={collapsedGroups[type]} onToggle={t=> toggleGroup(t)} onDownloadAll={downloadAllInGroup} onDownload={downloadDoc} onSign={(d)=> { setSignTargetDoc(d.id); setShowSignModal(true); }} onDelete={(d)=> setDocs(s => s.filter(x=>x.id!==d.id))} onPreview={openPreview} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* Right Sidebar - Trips & Validation */}
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="rounded-xl p-5 sticky top-6" style={{backgroundColor:'var(--card-bg)', border:'1px solid var(--border-color)', boxShadow:'0 1px 3px rgba(0,0,0,0.1)'}}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold" style={{color:'var(--text-color)'}}>Trips & Validation</h3>
-                <button className="text-xs px-2 py-1 rounded" style={{color:'var(--text-muted)'}} onClick={() => setCollapsedPanels(s => ({ ...s, tripsPanel: !s.tripsPanel }))}>{collapsedPanels.tripsPanel ? 'Expand' : 'Collapse'}</button>
-              </div>
-              
-              <div className={collapsedPanels.tripsPanel ? 'hidden' : ''}>
-                <select value={selectedTrip} onChange={e=> setSelectedTrip(e.target.value)} className="w-full text-sm rounded-lg p-2.5" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)'}}>
-                  <option value="">Select trip (optional)</option>
-                  {trips.map(t => <option key={t.id} value={t.id}>{t.title || t.id}</option>)}
-                </select>
-                
-                {selectedTrip && (
-                  <div className="mt-4 p-3 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.03)'}}>
-                    <div className="text-sm font-medium mb-2" style={{color:'var(--text-color)'}}>Trip details</div>
-                    <div className="text-xs mb-2" style={{color:'var(--text-muted)'}}>Validation status:</div>
-                    <div className="mb-3">
-                      {(() => { 
-                        const v = validateTrip(selectedTrip); 
-                        return v.ok 
-                          ? <div className="text-sm font-medium px-3 py-2 rounded-lg" style={{backgroundColor:'rgba(16,185,129,0.1)', color:'#059669'}}>✓ All required docs present</div> 
-                          : <div className="text-sm font-medium px-3 py-2 rounded-lg" style={{backgroundColor:'rgba(239,68,68,0.1)', color:'#dc2626'}}>✗ Missing: {v.missing.join(', ')}</div> 
-                      })()}
-                    </div>
-                    <div className="mt-3 pt-3" style={{borderTop:'1px solid var(--border-color)'}}>
-                      <div className="text-xs font-medium mb-2" style={{color:'var(--text-muted)'}}>Attach documents to trip</div>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {docs.filter(d=> d.employeeId===selectedEmployee).map(d => (
-                          <div key={d.id} className="flex items-center justify-between text-xs p-2 rounded" style={{backgroundColor:'var(--card-bg)'}}>
-                            <div className="truncate flex-1 mr-2" style={{color:'var(--text-color)'}}>{d.type} — {d.filename}</div>
-                            <button type="button" className="px-2 py-1 rounded text-xs font-medium transition-colors" style={{backgroundColor:'var(--primary-color)', color:'white'}} onClick={()=> attachDocToTrip(d.id, selectedTrip)}>Attach</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Policies Section */}
-                <div className="mt-6 pt-4" style={{borderTop:'1px solid var(--border-color)'}}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-medium" style={{color:'var(--text-color)'}}>Policies</h4>
-                    <button type="button" className="text-xs px-2 py-1 rounded-lg font-medium" style={{backgroundColor:'var(--primary-color)', color:'white'}} onClick={()=>{ const dest = prompt('Destination name to require docs for (e.g., India)'); if(!dest) return; const types = prompt('Required types (comma separated, e.g., passport,visa)'); addPolicy(dest, (types||'').split(',').map(s=>s.trim()).filter(Boolean)); }}>+ Add</button>
-                  </div>
-                  <div className="text-xs mb-2" style={{color:'var(--text-muted)'}}>Destination → required types</div>
-                  <div className="space-y-2">
-                    {Object.keys(policies).length === 0 && <div className="text-xs py-2" style={{color:'var(--text-muted)'}}>No policies defined</div>}
-                    {Object.entries(policies).map(([dest, types]) => (
-                      <div key={dest} className="flex items-center justify-between text-xs p-2 rounded-lg" style={{backgroundColor:'rgba(99,102,241,0.05)'}}>
-                        <div className="font-medium" style={{color:'var(--text-color)'}}>{dest}</div>
-                        <div style={{color:'var(--text-muted)'}}>{types.join(', ')}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
-
-        {/* Sign Modal */}
-        {showSignModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50" onClick={()=> setShowSignModal(false)} />
-            <div className="relative rounded-xl p-6 w-full max-w-lg" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
-              <h4 className="font-semibold text-lg mb-4" style={{color:'var(--text-color)'}}>Sign Document</h4>
-              <div className="rounded-lg overflow-hidden" style={{border:'1px solid var(--border-color)'}}>
-                <canvas ref={canvasRef} width={480} height={160} style={{width:'100%', height:'160px', backgroundColor:'#fafafa'}} onMouseDown={(e)=>{ isDrawing.current=true; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.beginPath(); ctx.moveTo(e.clientX-rect.left, e.clientY-rect.top); }} onMouseUp={()=>{ isDrawing.current=false; }} onMouseMove={(e)=>{ if(!isDrawing.current) return; const ctx = canvasRef.current.getContext('2d'); const rect = canvasRef.current.getBoundingClientRect(); ctx.lineTo(e.clientX-rect.left, e.clientY-rect.top); ctx.stroke(); }} />
-              </div>
-              <p className="text-xs mt-2 mb-4" style={{color:'var(--text-muted)'}}>Draw your signature above</p>
-              <div className="flex gap-2 justify-end">
-                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=>{ const c=canvasRef.current; const ctx=c.getContext('2d'); ctx.clearRect(0,0,c.width,c.height); }}>Clear</button>
-                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=> { setShowSignModal(false); setSignTargetDoc(null); }}>Cancel</button>
-                <button type="button" className="px-4 py-2 text-sm rounded-lg font-medium text-white" style={{backgroundColor:'var(--primary-color)'}} onClick={()=>{ const c=canvasRef.current; const data=c.toDataURL('image/png'); if(signTargetDoc){ setDocs(s=> s.map(d => d.id===signTargetDoc ? ({ ...d, signed:true, signature:data, signedAt: new Date().toISOString() }) : d)); } setShowSignModal(false); setSignTargetDoc(null); }}>Save Signature</button>
+        {/* Stats Cards */}
+        <section className="grid grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white' }}>📁</div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
+                <div className="text-sm text-gray-500">Total Documents</div>
               </div>
             </div>
           </div>
-        )}
+          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white' }}>✓</div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{stats.valid}</div>
+                <div className="text-sm text-gray-500">Valid</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white' }}>⚠</div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{stats.expiring}</div>
+                <div className="text-sm text-gray-500">Expiring Soon</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white' }}>✕</div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{stats.expired}</div>
+                <div className="text-sm text-gray-500">Expired</div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        {/* Preview Modal */}
-        {previewDoc && (
+        {/* Filters */}
+        <section className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Filter:</span>
+              <select value={filter} onChange={e => setFilter(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="all">All Types</option>
+                {DOC_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Document Grid */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {loading ? (
+            <div className="col-span-full text-center py-12 text-gray-400">Loading documents...</div>
+          ) : filteredDocs.length === 0 ? (
+            <div className="col-span-full bg-white rounded-xl p-12 border border-gray-100 text-center">
+              <div className="text-5xl mb-4">📄</div>
+              <div className="text-gray-500 mb-4">No documents found</div>
+              <button onClick={openAddModal} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Upload your first document</button>
+            </div>
+          ) : (
+            filteredDocs.map(doc => {
+              const docType = getDocType(doc.type);
+              const expired = isExpired(doc.expiry);
+              const expiring = isExpiringSoon(doc.expiry);
+              
+              return (
+                <div key={doc.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                  {/* Card Header */}
+                  <div className="p-4 border-b border-gray-50" style={{ backgroundColor: `${docType.color}10` }}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg" style={{ backgroundColor: docType.color, color: 'white' }}>
+                          {docType.icon}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-slate-800">{doc.name}</div>
+                          <div className="text-xs text-gray-500">{docType.label}</div>
+                        </div>
+                      </div>
+                      {expired && <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">Expired</span>}
+                      {expiring && !expired && <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Expiring Soon</span>}
+                      {!expired && !expiring && doc.expiry && <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">Valid</span>}
+                    </div>
+                  </div>
+                  
+                  {/* Card Body */}
+                  <div className="p-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Expiry Date</span>
+                        <span className={`font-medium ${expired ? 'text-red-600' : expiring ? 'text-amber-600' : 'text-slate-700'}`}>
+                          {formatDate(doc.expiry)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Uploaded</span>
+                        <span className="text-slate-700">{formatDate(doc.createdAt || doc.created_at)}</span>
+                      </div>
+                      {doc.notes && (
+                        <div className="pt-2 border-t border-gray-50">
+                          <span className="text-gray-500 text-xs">{doc.notes}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Card Actions */}
+                  <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                    <button onClick={() => openEditModal(doc)} className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDelete(doc.id)} className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </section>
+
+        {/* Upload/Edit Modal */}
+        {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50" onClick={closePreview} />
-            <div className="relative rounded-xl p-6 w-full max-w-3xl max-h-[85vh] overflow-auto" style={{backgroundColor:'var(--card-bg)', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)'}}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="font-semibold" style={{color:'var(--text-color)'}}>{previewDoc.filename}</div>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={()=> downloadDoc(previewDoc)}>Download</button>
-                  <button className="px-3 py-1.5 text-sm rounded-lg font-medium" style={{border:'1px solid var(--border-color)', backgroundColor:'var(--card-bg)', color:'var(--text-color)'}} onClick={closePreview}>Close</button>
+            <div className="fixed inset-0 bg-black/50" onClick={closeModal}></div>
+            <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-slate-800">
+                    {editDoc ? 'Edit Document' : 'Upload Document'}
+                  </h3>
+                  <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg text-gray-400">✕</button>
                 </div>
               </div>
-              <div className="rounded-lg overflow-hidden" style={{border:'1px solid var(--border-color)'}}>
-                { (previewDoc.dataUrl || '').startsWith('data:image/') 
-                  ? <img src={previewDoc.dataUrl} alt={previewDoc.filename} style={{maxWidth:'100%', display:'block'}}/> 
-                  : <div className="text-sm p-8 text-center" style={{color:'var(--text-muted)'}}>Preview not available for this file type.</div> 
-                }
+              
+              {/* Modal Body */}
+              <div className="p-6 space-y-5">
+                {/* Document Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DOC_TYPES.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, type: t.id }))}
+                        className={`p-3 rounded-xl border-2 transition-all ${form.type === t.id ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100 hover:border-gray-200'}`}
+                      >
+                        <div className="text-2xl mb-1">{t.icon}</div>
+                        <div className="text-xs font-medium text-gray-700">{t.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Document Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Document Name *</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g., US Passport, Schengen Visa"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Expiry Date */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Expiry Date</label>
+                  <input
+                    type="date"
+                    value={form.expiry}
+                    onChange={e => setForm(f => ({ ...f, expiry: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* File Upload (only for new documents) */}
+                {!editDoc && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
+                    <div 
+                      onClick={() => fileRef.current?.click()}
+                      className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition-colors"
+                    >
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        onChange={e => setForm(f => ({ ...f, file: e.target.files?.[0] || null }))}
+                        className="hidden"
+                      />
+                      {form.file ? (
+                        <div className="text-indigo-600 font-medium">{form.file.name}</div>
+                      ) : (
+                        <>
+                          <div className="text-3xl mb-2">📤</div>
+                          <div className="text-gray-500">Click to upload or drag and drop</div>
+                          <div className="text-xs text-gray-400 mt-1">PDF, JPG, PNG, DOC (max 10MB)</div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                  <textarea
+                    value={form.notes}
+                    onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                    placeholder="Additional notes..."
+                    rows={3}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  />
+                </div>
+              </div>
+              
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-gray-100 flex items-center justify-end gap-3">
+                <button onClick={closeModal} className="px-5 py-2.5 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 font-medium">
+                  Cancel
+                </button>
+                <button 
+                  onClick={editDoc ? handleUpdate : handleUpload}
+                  className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-medium"
+                >
+                  {editDoc ? 'Save Changes' : 'Upload Document'}
+                </button>
               </div>
             </div>
           </div>
