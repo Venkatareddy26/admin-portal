@@ -47,3 +47,45 @@ export const createExpense = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+// Update expense
+export const updateExpense = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category, vendor, amount, description, date } = req.body;
+
+    const result = await pool.query(`
+      UPDATE expenses
+      SET category = $1, vendor = $2, amount = $3, description = $4, expense_date = $5
+      WHERE id = $6
+      RETURNING *
+    `, [category, vendor, amount, description, date, id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+
+    return res.json({ success: true, expense: result.rows[0] });
+  } catch (err) {
+    console.error('updateExpense error', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Delete expense
+export const deleteExpense = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query('DELETE FROM expenses WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+
+    return res.json({ success: true, message: 'Expense deleted successfully' });
+  } catch (err) {
+    console.error('deleteExpense error', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
