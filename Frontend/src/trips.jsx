@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 const STATUSES = ['pending', 'approved', 'rejected', 'active', 'completed'];
 
 export default function Trips() {

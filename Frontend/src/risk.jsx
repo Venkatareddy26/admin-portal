@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const ADVISORIES_KEY = 'td_advisories_v1';
-const TRAVELER_STATE_KEY = 'td_travelers_v1';
-const NOTIF_KEY = 'td_notifications';
+// Use environment variable or Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const SAMPLE_DESTINATIONS = [
   { id: 'lon', name: 'London', lat: 51.5074, lng: -0.1278, risk: 'Low' },
@@ -31,22 +30,40 @@ function riskBg(r){
 
 export default function Risk(){
   const navigate = useNavigate();
-  const [destinations, setDestinations] = useState(()=>{
-    try{ const raw = localStorage.getItem('td_destinations'); if(raw) return JSON.parse(raw); }catch{}; return SAMPLE_DESTINATIONS;
-  });
-
-  const [advisories, setAdvisories] = useState(()=>{
-    try{ const r = localStorage.getItem(ADVISORIES_KEY); if(r) return JSON.parse(r); }catch{}; return [];
-  });
+  const [destinations, setDestinations] = useState(SAMPLE_DESTINATIONS);
+  const [advisories, setAdvisories] = useState([]);
   const [showAdvForm, setShowAdvForm] = useState(false);
-  const [advForm, setAdvForm] = useState({ destId: destinations[0]?.id || '', type: 'political', severity: 'medium', title: '', description: '' });
+  const [advForm, setAdvForm] = useState({ destId: SAMPLE_DESTINATIONS[0]?.id || '', type: 'political', severity: 'medium', title: '', description: '' });
+  const [travelers, setTravelers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [travelers, setTravelers] = useState(()=>{
-    try{ const r = localStorage.getItem(TRAVELER_STATE_KEY); if(r) return JSON.parse(r); }catch{}; return [
-      { id: 't_alice', name: 'Alice Johnson', email: 'alice.johnson@example.com', location: { lat:51.5, lng:-0.12 }, optIn: true, lastCheckIn: new Date().toISOString(), sos: false },
-      { id: 't_bob', name: 'Bob Smith', email: 'bob.smith@example.com', location: { lat:40.7, lng:-74.0 }, optIn: true, lastCheckIn: new Date().toISOString(), sos: false },
-    ]; }
-  );
+  // Fetch advisories and travelers from backend
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [advRes, travRes] = await Promise.all([
+          fetch(`${API_BASE}/api/risk/advisories`),
+          fetch(`${API_BASE}/api/risk/travelers`)
+        ]);
+        
+        if (advRes.ok) {
+          const data = await advRes.json();
+          if (data.success) setAdvisories(data.advisories || []);
+        }
+        
+        if (travRes.ok) {
+          const data = await travRes.json();
+          if (data.success) setTravelers(data.travelers || []);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch risk data', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const [notifications, setNotifications] = useState(()=>{
     try{ const r = localStorage.getItem(NOTIF_KEY); if(r) return JSON.parse(r); }catch{}; return [];

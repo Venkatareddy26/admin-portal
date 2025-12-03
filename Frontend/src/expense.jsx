@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-// Use relative URL to leverage Vite proxy
-const API_BASE = '';
+// Use environment variable or Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // Format date nicely
 function formatDate(dateStr) {

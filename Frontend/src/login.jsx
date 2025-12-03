@@ -8,8 +8,8 @@ export default function LoginPage(){
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  // Use relative URL to leverage Vite proxy
-  const API_BASE = '';
+  // Use environment variable or Vite proxy
+  const API_BASE = import.meta.env.VITE_API_URL || '';
 
   useEffect(() => {
     try{

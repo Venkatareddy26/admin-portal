@@ -11,7 +11,7 @@ import sse from './sse';
 import ProfileMenu from './components/ProfileMenu';
 import KpiCard from './components/KpiCard';
 
-const API_BASE = '';
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const INITIAL_SUMMARY = {
   airfare: 0, hotels: 0, cars: 0, total: 0,

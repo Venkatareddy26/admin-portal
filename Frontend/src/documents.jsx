@@ -4,6 +4,9 @@ import DocSearch from './components/DocSearch';
 import DocGroup from './components/DocGroup';
 import DocPreview from './components/DocPreview';
 
+// Use environment variable or Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 function uid(prefix='d'){ return `${prefix}_${Date.now()}_${Math.floor(Math.random()*9000+1000)}` }
 function readLS(key, fallback){ try{ const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }catch{ return fallback; } }
 function writeLS(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch{}
@@ -12,10 +15,38 @@ function writeLS(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }ca
 export default function Documents(){
   const navigate = useNavigate();
   const [collapsedPanels, setCollapsedPanels] = useState({});
-  // start with no seeded/demo employees; rely on persisted store or backend
-  const [employees, setEmployees] = useState(()=> readLS('td_employees', []));
-  const [trips, setTrips] = useState(()=> readLS('td_trips_v2', []));
-  const [docs, setDocs] = useState(()=> readLS('td_docs_v1', []));
+  const [employees, setEmployees] = useState([]);
+  const [trips, setTrips] = useState([]);
+  const [docs, setDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch data from backend
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const [docsRes, tripsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/documents`),
+          fetch(`${API_BASE}/api/trips`)
+        ]);
+        
+        if (docsRes.ok) {
+          const data = await docsRes.json();
+          if (data.success) setDocs(data.documents || []);
+        }
+        
+        if (tripsRes.ok) {
+          const data = await tripsRes.json();
+          if (data.success) setTrips(data.trips || []);
+        }
+      } catch (e) {
+        console.warn('Failed to fetch documents data', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
   const [policies, setPolicies] = useState(()=> readLS('td_doc_policies', { /* destinationName: [ 'passport','vaccine' ] */ }));
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedTrip, setSelectedTrip] = useState('');

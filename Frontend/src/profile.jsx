@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Use environment variable or Vite proxy
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 export default function ProfilePage(){
   const [user, setUser] = useState(()=>{
     try{ return JSON.parse(localStorage.getItem('currentUser')||'{}'); }catch(e){ return {}; }
@@ -21,7 +24,6 @@ export default function ProfilePage(){
     setLoading(true);
     const formData = new FormData();
     formData.append('photo', file);
-    const API_BASE = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:4001';
     try{
       const token = localStorage.getItem('app_token');
       const res = await fetch(`${API_BASE}/api/user/photo`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : undefined, body: formData });
@@ -39,7 +41,6 @@ export default function ProfilePage(){
   }
 
   async function saveName(){
-    const API_BASE = (typeof window !== 'undefined' && window.__API_BASE__) || (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) || 'http://localhost:4001';
     try{
       setLoading(true);
       const token = localStorage.getItem('app_token');
