@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import FocusTrap from 'focus-trap-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import ThemeToggle from './theme-toggle';
-import GlobalMap from './components/GlobalMap';
-import RiskFeed from './components/RiskFeed';
-import WidgetManager from './components/WidgetManager';
-import CorporateDonut from './components/CorporateDonut';
-import sse from './sse';
-import ProfileMenu from './components/ProfileMenu';
-import KpiCard from './components/KpiCard';
-import './styles/dashboard.css';
+import ThemeToggle from '../components/theme-toggle';
+import GlobalMap from '../components/GlobalMap';
+import RiskFeed from '../components/RiskFeed';
+import WidgetManager from '../components/WidgetManager';
+import CorporateDonut from '../components/CorporateDonut';
+import sse from '../services/sse';
+import ProfileMenu from '../components/ProfileMenu';
+import KpiCard from '../components/KpiCard';
+import '../styles/dashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 

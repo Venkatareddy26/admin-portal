@@ -4,18 +4,18 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
 
 // Page imports
-import Reports from './reports.js';
-import LoginPage from './login.js';
-import RegisterPage from './register.js';
-import TravelDashboard from './dashboard.js';
-import Analytics from './analytics.js';
-import PolicyBuilder from './policy.js';
-import Trips from './trips.js';
-import Risk from './risk.js';
-import ExpensePage from './expense.js';
-import Documents from './documents.js';
-import ProfilePage from './profile.js';
-import SettingsPage from './settings.js';
+import Reports from './pages/reports.js';
+import LoginPage from './pages/login.js';
+import RegisterPage from './pages/register.js';
+import TravelDashboard from './pages/dashboard.js';
+import Analytics from './pages/analytics.js';
+import PolicyBuilder from './pages/policy.js';
+import Trips from './pages/trips.js';
+import Risk from './pages/risk.js';
+import ExpensePage from './pages/expense.js';
+import Documents from './pages/documents.js';
+import ProfilePage from './pages/profile.js';
+import SettingsPage from './pages/settings.js';
 
 function AppRoutes() {
   const isAuthed = (() => {

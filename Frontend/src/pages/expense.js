@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { APP_CONFIG, formatCurrency, formatDate, getCategoryConfig } from './config';
-import './styles/expense.css';
+import { APP_CONFIG, formatCurrency, formatDate, getCategoryConfig } from '../utils/config';
+import '../styles/expense.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 

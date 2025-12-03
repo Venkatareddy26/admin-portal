@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './styles/risk.css';
+import '../styles/risk.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
