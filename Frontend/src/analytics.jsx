@@ -14,10 +14,116 @@ function csvDownload(filename, rows) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
-function jsonDownload(filename, obj){
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+
+// Generate HTML Report for printing/PDF
+function generateReport(title, trips, expenses, stats) {
+  const now = new Date().toLocaleString();
+  const totalSpend = trips.reduce((s, t) => s + (t.spend || 0), 0);
+  const byCategory = {};
+  expenses.forEach(e => { byCategory[e.category] = (byCategory[e.category] || 0) + Number(e.amount || 0); });
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>${title}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+    h1 { color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
+    h2 { color: #1e293b; margin-top: 30px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .logo { font-size: 24px; font-weight: bold; color: #4f46e5; }
+    .date { color: #64748b; font-size: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0; }
+    .stat-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; text-align: center; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #1e293b; }
+    .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f1f5f9; font-weight: 600; color: #475569; }
+    tr:hover { background: #f8fafc; }
+    .amount { font-weight: 600; color: #059669; }
+    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; text-align: center; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">✈️ Employee Travel Portal</div>
+    <div class="date">Generated: ${now}</div>
+  </div>
+  
+  <h1>${title}</h1>
+  
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value">${trips.length}</div>
+      <div class="stat-label">Total Trips</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">$${totalSpend.toLocaleString()}</div>
+      <div class="stat-label">Total Spend</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${expenses.length}</div>
+      <div class="stat-label">Expenses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">${Object.keys(byCategory).length}</div>
+      <div class="stat-label">Categories</div>
+    </div>
+  </div>
+  
+  <h2>Expense Breakdown by Category</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Amount</th><th>% of Total</th></tr></thead>
+    <tbody>
+      ${Object.entries(byCategory).map(([cat, amt]) => `
+        <tr>
+          <td>${cat}</td>
+          <td class="amount">$${amt.toLocaleString()}</td>
+          <td>${totalSpend > 0 ? Math.round((amt / totalSpend) * 100) : 0}%</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  
+  <h2>Trip Details</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Employee</th><th>Destination</th><th>Department</th><th>Date</th><th>Spend</th><th>Status</th></tr></thead>
+    <tbody>
+      ${trips.map(t => `
+        <tr>
+          <td>${t.id}</td>
+          <td>${t.employee || '—'}</td>
+          <td>${t.destination || '—'}</td>
+          <td>${t.dept || '—'}</td>
+          <td>${t.date || '—'}</td>
+          <td class="amount">$${(t.spend || 0).toLocaleString()}</td>
+          <td>${t.status || '—'}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+  
+  <div class="footer">
+    <p>Employee Travel Portal - Analytics Report</p>
+    <p>This report was automatically generated. For questions, contact your administrator.</p>
+  </div>
+</body>
+</html>`;
+  return html;
+}
+
+function downloadReport(title, trips, expenses) {
+  const html = generateReport(title, trips, expenses);
+  const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // mock data moved to ./data/mockData.js
@@ -149,14 +255,16 @@ export default function Analytics(){
   function toggleSort(k){ if(sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('desc'); } }
 
   function downloadTripsCSV(){
-    const rows = [['id','employee','dept','region','destination','spend','date','status'], ...filteredTrips.map(t=>[t.id,t.employee,t.dept,t.region,t.destination,t.spend,t.date,t.status])];
-    csvDownload('trips-filtered.csv', rows);
+    const rows = [['ID','Employee','Department','Region','Destination','Spend ($)','Date','Status'], ...filteredTrips.map(t=>[t.id,t.employee,t.dept,t.region,t.destination,t.spend,t.date,t.status])];
+    csvDownload(`trips_report_${new Date().toISOString().split('T')[0]}.csv`, rows);
   }
   function downloadExpensesCSV(){
-    const rows = [['id','tripId','category','vendor','amount'], ...expenses.map(e=>[e.id,e.tripId,e.category,e.vendor,e.amount])];
-    csvDownload('expenses.csv', rows);
+    const rows = [['ID','Trip ID','Category','Vendor','Amount ($)','Description'], ...expenses.map(e=>[e.id,e.tripId||'',e.category,e.vendor||'',e.amount,e.description||''])];
+    csvDownload(`expenses_report_${new Date().toISOString().split('T')[0]}.csv`, rows);
   }
-  function exportSnapshot(){ jsonDownload('analytics_snapshot.json', { trips, expenses, incidents, generatedAt: new Date().toISOString() }); }
+  function downloadFullReport(){
+    downloadReport('Analytics Report', filteredTrips, expenses);
+  }
 
   return (
     <div className="min-h-screen font-sans" style={{backgroundColor:'#f3f4f6', color:'#1f2937'}}>
@@ -168,9 +276,9 @@ export default function Analytics(){
           </div>
 
           <div className="flex items-center gap-2">
-            <button type="button" aria-label="Export filtered trips as CSV" onClick={downloadTripsCSV} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid #e5e7eb', backgroundColor:'#ffffff', color:'#374151'}}>Export trips</button>
-            <button type="button" aria-label="Export all expenses as CSV" onClick={downloadExpensesCSV} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid #e5e7eb', backgroundColor:'#ffffff', color:'#374151'}}>Export expenses</button>
-            <button type="button" aria-label="Save analytics snapshot as JSON" onClick={exportSnapshot} className="px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors" style={{backgroundColor:'#6366f1'}}>Snapshot</button>
+            <button type="button" aria-label="Download trips as CSV" onClick={downloadTripsCSV} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid #e5e7eb', backgroundColor:'#ffffff', color:'#374151'}}>📊 Trips CSV</button>
+            <button type="button" aria-label="Download expenses as CSV" onClick={downloadExpensesCSV} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid #e5e7eb', backgroundColor:'#ffffff', color:'#374151'}}>💰 Expenses CSV</button>
+            <button type="button" aria-label="Generate full analytics report" onClick={downloadFullReport} className="px-4 py-2 text-sm font-medium rounded-lg text-white transition-colors" style={{backgroundColor:'#6366f1'}}>📄 Download Report</button>
             <button type="button" onClick={()=> navigate(-1)} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors" style={{border:'1px solid #e5e7eb', backgroundColor:'#ffffff', color:'#374151'}}>← Back</button>
           </div>
         </header>
