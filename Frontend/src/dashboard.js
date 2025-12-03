@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import FocusTrap from 'focus-trap-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -10,6 +10,7 @@ import CorporateDonut from './components/CorporateDonut';
 import sse from './sse';
 import ProfileMenu from './components/ProfileMenu';
 import KpiCard from './components/KpiCard';
+import './styles/dashboard.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 

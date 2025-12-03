@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import CorporateDonut from './components/CorporateDonut';
 import TimeSeriesChart from './components/TimeSeriesChart';
 import TripDetailModal from './components/TripDetailModal';
-// Use environment variable or empty string for Vite proxy
+import './styles/analytics.css';
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // Utilities

@@ -1,0 +1,406 @@
+/* Trips Page Styles */
+
+.trips-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: var(--bg-color, #f8fafc);
+}
+
+.trips-container {
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+/* Header */
+.trips-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.trips-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.trips-header p {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+}
+
+.trips-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* Stats Cards */
+.trips-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .trips-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.trips-stat-card {
+  padding: 1.25rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.trips-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.trips-stat-icon {
+  font-size: 1.5rem;
+}
+
+.trips-stat-value {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.trips-stat-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Filters */
+.trips-filters {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.trips-filter-select,
+.trips-filter-input {
+  padding: 0.625rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-color);
+}
+
+.trips-filter-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.trips-count {
+  margin-left: auto;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Trip List */
+.trips-list {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--card-bg, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.trips-loading,
+.trips-empty {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.trips-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.trips-table {
+  width: 100%;
+}
+
+.trips-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.02);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.trips-table td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.trips-table tr {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.trips-table tr:hover {
+  background-color: rgba(99, 102, 241, 0.05);
+}
+
+/* Traveler Cell */
+.traveler-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.traveler-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.traveler-name {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.traveler-dept {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.status-badge.approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.status-badge.rejected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.status-badge.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.status-badge.completed {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+/* Risk Badge */
+.risk-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.risk-badge.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.risk-badge.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.risk-badge.low {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+/* Modal */
+.trips-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.trips-modal {
+  width: 100%;
+  max-width: 36rem;
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background: var(--card-bg, #ffffff);
+}
+
+.trips-modal-header {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.trips-modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.trips-modal-subtitle {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  color: var(--text-muted);
+}
+
+.trips-modal-close {
+  font-size: 1.5rem;
+  padding: 0.25rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+}
+
+.trips-modal-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.trips-modal-body {
+  padding: 1.25rem;
+}
+
+.trips-modal-footer {
+  padding: 1.25rem;
+  display: flex;
+  gap: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Form */
+.trips-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.trips-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: var(--text-color);
+}
+
+.trips-form-input,
+.trips-form-select,
+.trips-form-textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: var(--card-bg, #ffffff);
+  color: var(--text-color);
+}
+
+.trips-form-textarea {
+  resize: none;
+}
+
+/* Risk Level Buttons */
+.risk-level-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.risk-level-btn {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 2px solid;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Detail Modal */
+.trip-detail-badges {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.trip-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.trip-detail-card {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.trip-detail-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+  color: var(--text-muted);
+}
+
+.trip-detail-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.trip-detail-value.large {
+  font-size: 1.5rem;
+}

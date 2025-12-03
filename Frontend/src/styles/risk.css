@@ -1,0 +1,562 @@
+/* Risk Page Styles */
+
+.risk-page {
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--bg-color, #f8fafc);
+  color: var(--text-color, #1f2937);
+}
+
+.risk-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Header */
+.risk-header {
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .risk-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.risk-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.risk-header p {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.risk-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.risk-btn-primary {
+  background-color: var(--primary-color, #6366f1);
+  color: white;
+  border: none;
+}
+
+.risk-btn-secondary {
+  background-color: var(--card-bg, #ffffff);
+  color: var(--text-color);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* Layout */
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+}
+
+/* Left Column */
+.risk-left {
+  grid-column: span 12;
+}
+
+@media (min-width: 1024px) {
+  .risk-left {
+    grid-column: span 8;
+  }
+}
+
+/* Right Column */
+.risk-right {
+  grid-column: span 12;
+}
+
+@media (min-width: 1024px) {
+  .risk-right {
+    grid-column: span 4;
+  }
+}
+
+/* Cards */
+.risk-card {
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  background-color: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.risk-card h3 {
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 0.5rem;
+}
+
+.risk-card p {
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 1rem;
+}
+
+/* Map */
+.risk-map-container {
+  height: 380px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+/* Legend */
+.risk-legend {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.risk-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.risk-legend-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
+
+.risk-legend-dot.low { background-color: #10b981; }
+.risk-legend-dot.medium { background-color: #f59e0b; }
+.risk-legend-dot.high { background-color: #ef4444; }
+
+/* Destination Cards */
+.risk-destinations-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .risk-destinations-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .risk-destinations-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.risk-destination-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.risk-destination-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.risk-destination-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.risk-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.risk-badge.low {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.risk-badge.medium {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.risk-badge.high {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.risk-level-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.risk-level-btn {
+  flex: 1;
+  padding: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* Advisories */
+.risk-advisories-list {
+  max-height: 20rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.risk-advisory-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-color, #e5e7eb);
+  margin-bottom: 0.75rem;
+}
+
+.risk-advisory-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.risk-advisory-title {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.risk-advisory-date {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.5rem;
+}
+
+.risk-advisory-description {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.75rem;
+}
+
+.risk-advisory-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.risk-advisory-btn {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+.risk-advisory-btn.primary {
+  background-color: rgba(99, 102, 241, 0.1);
+  color: var(--primary-color, #6366f1);
+}
+
+.risk-advisory-btn.secondary {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--text-muted, #6b7280);
+}
+
+/* Travelers */
+.risk-travelers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.risk-traveler-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.risk-traveler-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.risk-traveler-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.risk-traveler-email {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-traveler-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.risk-traveler-status.sharing {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.risk-traveler-status.private {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-traveler-checkin {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 0.75rem;
+}
+
+.risk-traveler-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.risk-traveler-btn {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 0.25rem;
+  border: none;
+  cursor: pointer;
+}
+
+.risk-traveler-btn.checkin {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.risk-traveler-btn.sos {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.risk-traveler-btn.escalate {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.risk-traveler-btn.toggle {
+  background-color: rgba(107, 114, 128, 0.1);
+  color: var(--text-muted, #6b7280);
+}
+
+/* Emergency */
+.risk-emergency-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.risk-emergency-item.hotline {
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+.risk-emergency-item.email {
+  background-color: rgba(99, 102, 241, 0.05);
+}
+
+.risk-emergency-icon {
+  font-size: 1.25rem;
+}
+
+.risk-emergency-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.risk-emergency-value {
+  font-size: 0.875rem;
+}
+
+.risk-emergency-value.phone {
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.risk-emergency-value.email {
+  color: var(--primary-color, #6366f1);
+}
+
+/* Notifications */
+.risk-notifications-list {
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.risk-notification-item {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  margin-bottom: 0.5rem;
+}
+
+.risk-notification-subject {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.risk-notification-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+}
+
+/* Modal */
+.risk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.risk-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.risk-modal {
+  position: relative;
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 28rem;
+  background-color: var(--card-bg, #ffffff);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.risk-modal-header {
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.risk-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.risk-modal-body {
+  padding: 1.25rem;
+}
+
+.risk-modal-footer {
+  padding: 1.25rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+/* Form */
+.risk-form-group {
+  margin-bottom: 1rem;
+}
+
+.risk-form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.375rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-form-input,
+.risk-form-select,
+.risk-form-textarea {
+  width: 100%;
+  padding: 0.625rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background-color: var(--card-bg, #ffffff);
+  color: var(--text-color);
+}
+
+.risk-form-textarea {
+  resize: none;
+}
+
+.risk-form-input:focus,
+.risk-form-select:focus,
+.risk-form-textarea:focus {
+  outline: none;
+  border-color: var(--primary-color, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.risk-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* Empty State */
+.risk-empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-empty-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.risk-empty-text {
+  font-size: 0.875rem;
+}
