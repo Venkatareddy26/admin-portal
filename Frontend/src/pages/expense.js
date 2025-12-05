@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+// Frontend/src/pages/expense.js
+/*import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG, formatCurrency, formatDate, getCategoryConfig } from '../utils/config';
 import '../styles/expense.css';
@@ -195,7 +196,7 @@ export default function Expense() {
   return (
     <div className="min-h-screen font-sans" style={{ backgroundColor: '#f8fafc' }}>
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
+        {/* Header }
         <header className="mb-8">
           <div className="flex items-start justify-between">
             <div>
@@ -211,7 +212,7 @@ export default function Expense() {
           </div>
         </header>
 
-        {/* Stats Cards */}
+        {/* Stats Cards *}
         <section className="grid grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3">
@@ -251,7 +252,7 @@ export default function Expense() {
           </div>
         </section>
 
-        {/* Filters */}
+        {/* Filters *}
         <section className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex-1 min-w-[200px]">
@@ -289,7 +290,7 @@ export default function Expense() {
           </div>
         </section>
 
-        {/* Expense Table */}
+        {/* Expense Table *}
         <section className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-gray-400">Loading expenses...</div>
@@ -342,7 +343,7 @@ export default function Expense() {
           )}
         </section>
 
-        {/* Add/Edit Modal */}
+        {/* Add/Edit Modal *}
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-black/50" onClick={closeModal}></div>
@@ -355,7 +356,7 @@ export default function Expense() {
               </div>
               
               <div className="p-6 space-y-5">
-                {/* Category Selection */}
+                {/* Category Selection *}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
                   <div className="grid grid-cols-3 gap-2">
@@ -373,7 +374,7 @@ export default function Expense() {
                   </div>
                 </div>
 
-                {/* Amount */}
+                {/* Amount *}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
                   <div className="relative">
@@ -388,7 +389,7 @@ export default function Expense() {
                   </div>
                 </div>
 
-                {/* Vendor */}
+                {/* Vendor *}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Vendor</label>
                   <input
@@ -400,7 +401,7 @@ export default function Expense() {
                   />
                 </div>
 
-                {/* Date */}
+                {/* Date *}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
                   <input
@@ -411,7 +412,7 @@ export default function Expense() {
                   />
                 </div>
 
-                {/* Description */}
+                {/* Description *}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
                   <textarea
@@ -423,7 +424,7 @@ export default function Expense() {
                   />
                 </div>
 
-                {/* Trip Link */}
+                {/* Trip Link *}
                 {trips.length > 0 && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Link to Trip (Optional)</label>
@@ -448,6 +449,242 @@ export default function Expense() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+*/
+// Frontend/src/pages/expense.js
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { formatCurrency, formatDate } from '../utils/config';
+import '../styles/expense.css';
+
+export default function Expense() {
+  const navigate = useNavigate();
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState({ search: '' });
+  const [sortBy, setSortBy] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+
+  // Load Employee Expenses
+  /*async function fetchData() {
+    try {
+      setLoading(true);
+
+      const res = await fetch("http://localhost:5000/api/expenses", {
+        headers: {
+          // If admin auth uses token, include this:
+          // "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json(); // Employee backend returns ARRAY
+        setExpenses(data);
+      } else {
+        console.warn("Failed to load expenses:", await res.text());
+      }
+    } catch (e) {
+      console.error("Fetch failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+*/
+async function fetchData() {
+  try {
+    setLoading(true);
+
+    const res = await fetch("http://localhost:5000/api/expenses");
+
+    if (!res.ok) {
+      console.warn("Failed to load expenses:", await res.text());
+      return;
+    }
+
+    const data = await res.json();
+
+    // Backend may return array OR object
+    if (Array.isArray(data)) {
+      setExpenses(data);                   // Employee data format
+    } else if (data.expenses) {
+      setExpenses(data.expenses);          // Admin data format
+    } else {
+      setExpenses([]);                     // fallback
+    }
+
+  } catch (e) {
+    console.error("Fetch failed:", e);
+  } finally {
+    setLoading(false);
+  }
+}
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Approve / Reject Expense
+  async function updateStatus(id, status) {
+    try {
+      const res = await fetch(`http://localhost:5000/api/expenses/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+
+      if (res.ok) {
+        fetchData(); // refresh UI
+      } else {
+        console.error("Status update failed:", await res.text());
+      }
+    } catch (err) {
+      console.error("Error updating:", err);
+    }
+  }
+
+  // Filter + Sort
+  const filteredExpenses = useMemo(() => {
+    let list = [...expenses];
+
+    if (filter.search) {
+      const q = filter.search.toLowerCase();
+      list = list.filter(e =>
+        e.title?.toLowerCase().includes(q) ||
+        e.notes?.toLowerCase().includes(q) ||
+        e.category?.toLowerCase().includes(q)
+      );
+    }
+
+    list.sort((a, b) => {
+      const mul = sortDir === "asc" ? 1 : -1;
+      if (sortBy === "amount")
+        return (Number(a.amount) - Number(b.amount)) * mul;
+
+      return (a.date_of_expense || '').localeCompare(b.date_of_expense || '') * mul;
+    });
+
+    return list;
+  }, [expenses, filter, sortBy, sortDir]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const pending = expenses.filter(e => e.status === "pending").length;
+    const approved = expenses.filter(e => e.status === "approved").length;
+
+    return { total, pending, approved, count: expenses.length };
+  }, [expenses]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans">
+      <div className="max-w-6xl mx-auto p-6">
+        
+        {/* Header */}
+        <header className="flex justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">Employee Expenses Review</h1>
+            <p className="text-gray-500 mt-1">Approve or reject employee-submitted expenses</p>
+          </div>
+          <button onClick={() => navigate(-1)} className="px-4 py-2 border rounded-lg">← Back</button>
+        </header>
+
+        {/* Stats */}
+        <section className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-medium text-gray-500">Total Expense Amount</h3>
+            <p className="text-3xl font-bold text-slate-800 mt-2">{formatCurrency(stats.total)}</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-medium text-gray-500">Pending Approvals</h3>
+            <p className="text-3xl font-bold text-yellow-600 mt-2">{stats.pending}</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow">
+            <h3 className="text-lg font-medium text-gray-500">Approved</h3>
+            <p className="text-3xl font-bold text-green-600 mt-2">{stats.approved}</p>
+          </div>
+        </section>
+
+        {/* Search */}
+        <section className="bg-white p-4 rounded-xl shadow mb-6">
+          <input
+            type="text"
+            placeholder="Search by title, notes, or category..."
+            value={filter.search}
+            onChange={e => setFilter({ search: e.target.value })}
+            className="w-full px-4 py-2 border rounded-lg"
+          />
+        </section>
+
+        {/* Table */}
+        <section className="bg-white rounded-xl shadow overflow-hidden">
+          {loading ? (
+            <p className="text-center p-6 text-gray-500">Loading...</p>
+          ) : filteredExpenses.length === 0 ? (
+            <p className="text-center p-6 text-gray-500">No expenses found</p>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left">Title</th>
+                  <th className="px-6 py-3 text-left">Category</th>
+                  <th className="px-6 py-3 text-left">Date</th>
+                  <th className="px-6 py-3 text-right">Amount</th>
+                  <th className="px-6 py-3 text-center">Status</th>
+                  <th className="px-6 py-3 text-center">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredExpenses.map(exp => (
+                  <tr key={exp.id} className="border-b">
+                    <td className="px-6 py-3">{exp.title}</td>
+                    <td className="px-6 py-3">{exp.category}</td>
+                    <td className="px-6 py-3">{formatDate(exp.date_of_expense)}</td>
+                    <td className="px-6 py-3 text-right">{formatCurrency(exp.amount)}</td>
+
+                    <td className="px-6 py-3 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          exp.status === "approved"
+                            ? "bg-green-100 text-green-700"
+                            : exp.status === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {exp.status}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-3 text-center flex justify-center gap-2">
+                      <button
+                        onClick={() => updateStatus(exp.id, "approved")}
+                        className="px-3 py-1 bg-green-50 text-green-700 rounded-lg"
+                      >
+                        Approve
+                      </button>
+
+                      <button
+                        onClick={() => updateStatus(exp.id, "rejected")}
+                        className="px-3 py-1 bg-red-50 text-red-700 rounded-lg"
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       </div>
     </div>
   );

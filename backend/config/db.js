@@ -10,8 +10,8 @@ const { Pool } = pkg;
 export const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'mva_db',
-  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'corporate_travel',
+  password: process.env.DB_PASSWORD || 'admin',
   port: parseInt(process.env.DB_PORT || '5432'),
   // Connection pool optimization
   max: 20,                    // Maximum connections in pool

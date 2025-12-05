@@ -1,10 +1,11 @@
-import { pool } from '../config/db.js';
+// expenseController.js
+/*import { pool } from '../config/db.js';
 
 // Cache for expenses (10 second TTL)
 let expenseCache = { data: null, time: 0 };
 const EXPENSE_CACHE_TTL = 10000;
 
-export const getExpenses = async (req, res) => {
+/*export const getExpenses = async (req, res) => {
   try {
     // Return cached data if fresh
     if (expenseCache.data && (Date.now() - expenseCache.time) < EXPENSE_CACHE_TTL) {
@@ -50,6 +51,37 @@ export const getExpenses = async (req, res) => {
 function invalidateExpenseCache() {
   expenseCache = { data: null, time: 0 };
 }
+*
+export const getExpenses = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id,
+        user_id,
+        title,
+        amount,
+        category,
+        date_of_expense,
+        receipt_url,
+        status,
+        notes,
+        "createdAt",
+        "updatedAt"
+      FROM "Expenses"
+      ORDER BY "createdAt" DESC
+    `);
+
+    return res.json({
+      success: true,
+      expenses: result.rows,
+      totalExpense: result.rows.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+    });
+
+  } catch (err) {
+    console.error("Admin GET expenses error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
 
 export const createExpense = async (req, res) => {
   try {
@@ -107,6 +139,153 @@ export const deleteExpense = async (req, res) => {
 
     invalidateExpenseCache(); // Clear cache on delete
     return res.json({ success: true, message: 'Expense deleted successfully' });
+  } catch (err) {
+    console.error('deleteExpense error', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+*/
+// backend/controllers/expenseController.js
+import { pool } from '../config/db.js';
+
+// ===============================
+// 1️⃣ GET ALL EMPLOYEE EXPENSES
+// ===============================
+export const getExpenses = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id,
+        user_id,
+        title,
+        amount,
+        category,
+        date_of_expense,
+        receipt_url,
+        status,
+        notes,
+        "createdAt",
+        "updatedAt"
+      FROM "Expenses"
+      ORDER BY "createdAt" DESC
+    `);
+
+    return res.json({
+      success: true,
+      expenses: result.rows,
+      totalExpense: result.rows.reduce((sum, e) => sum + Number(e.amount || 0), 0)
+    });
+
+  } catch (err) {
+    console.error("Admin GET expenses error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
+// ===============================
+// 2️⃣ ADMIN UPDATE STATUS (APPROVE / REJECT)
+// ===============================
+export const updateExpenseStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const result = await pool.query(
+      `UPDATE "Expenses"
+       SET status = $1, "updatedAt" = NOW()
+       WHERE id = $2
+       RETURNING *`,
+      [status, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Expense not found" });
+    }
+
+    return res.json({ success: true, expense: result.rows[0] });
+
+  } catch (err) {
+    console.error("Admin UPDATE status error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
+// ===============================
+// 3️⃣ CREATE EXPENSE (NOT USED IN ADMIN BUT KEEP IF NEEDED)
+// ===============================
+export const createExpense = async (req, res) => {
+  try {
+    const { title, amount, category, date_of_expense, notes } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO "Expenses" (title, amount, category, date_of_expense, status, notes)
+       VALUES ($1, $2, $3, $4, 'pending', $5)
+       RETURNING *`,
+      [title, amount, category, date_of_expense, notes]
+    );
+
+    return res.json({ success: true, expense: result.rows[0] });
+
+  } catch (err) {
+    console.error("Create expense error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
+// ===============================
+// 4️⃣ UPDATE EXPENSE INFO
+// ===============================
+export const updateExpense = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, amount, category, date_of_expense, notes } = req.body;
+
+    const result = await pool.query(
+      `UPDATE "Expenses"
+       SET title=$1, amount=$2, category=$3, date_of_expense=$4, notes=$5, "updatedAt" = NOW()
+       WHERE id=$6
+       RETURNING *`,
+      [title, amount, category, date_of_expense, notes, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: "Expense not found" });
+    }
+
+    return res.json({ success: true, expense: result.rows[0] });
+
+  } catch (err) {
+    console.error("updateExpense error:", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+
+
+// ===============================
+// 5️⃣ DELETE EXPENSE
+// ===============================
+export const deleteExpense = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `DELETE FROM "Expenses" WHERE id = $1 RETURNING *`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Expense not found' });
+    }
+
+    return res.json({ success: true, message: 'Expense deleted successfully' });
+
   } catch (err) {
     console.error('deleteExpense error', err);
     return res.status(500).json({ success: false, error: err.message });

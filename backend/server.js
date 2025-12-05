@@ -1,4 +1,5 @@
-import express from "express";
+// backend/server.js
+/*import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
@@ -27,11 +28,16 @@ app.use((req, res, next) => {
 });
 
 // CORS with caching
-app.use(cors({
+/*app.use(cors({
   origin: true,
   credentials: true,
   maxAge: 86400 // Cache preflight for 24 hours
 }));
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:3000"],
+  credentials: true
+}));
+
 
 // JSON parsing with size limit
 app.use(express.json({ limit: '10mb' }));
@@ -47,12 +53,31 @@ app.use((req, res, next) => {
 });
 
 // Routes
+/*app.use("/api/auth", authRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/documents", documentsRoutes);
+//app.use("/api/expense", expenseRoutes);
+// ❌ REMOVE OR COMMENT OUT (Admin should not have this)
+//app.use("/api/expenses", expenseRoutes);
+
+app.use("/api/expenses", expenseRoutes); // alias
+app.use("/api/policy", policyRoutes);
+app.use("/api/risk", riskRoutes);
+app.use("/api/trips", tripsRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/kpi", kpiRoutes);
+
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/documents", documentsRoutes);
-app.use("/api/expense", expenseRoutes);
-app.use("/api/expenses", expenseRoutes); // alias
+
+// ❌ Both admin expense routes MUST be removed
+// app.use("/api/expense", expenseRoutes);
+// app.use("/api/expenses", expenseRoutes); // alias
+
 app.use("/api/policy", policyRoutes);
 app.use("/api/risk", riskRoutes);
 app.use("/api/trips", tripsRoutes);
@@ -87,5 +112,97 @@ app.use((err, req, res, next) => {
 });
 
 // Server setup
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+*/
+// backend/server.js
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+
+import analyticsRoutes from "./routes/analyticsRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
+import documentsRoutes from "./routes/documentsRoutes.js";
+import expenseRoutes from "./routes/expenseRoutes.js"; // ⭐ Admin must read employee expenses
+import policyRoutes from "./routes/policyRoutes.js";
+import riskRoutes from "./routes/riskRoutes.js";
+import tripsRoutes from "./routes/tripsRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import kpiRoutes from "./routes/kpiRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+
+dotenv.config();
+const app = express();
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  next();
+});
+
+// ⭐ CORS FIX
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://localhost:3000"],
+    credentials: true,
+  })
+);
+
+// JSON parser
+app.use(express.json({ limit: "10mb" }));
+
+// Minimal logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    if (Date.now() - start > 1000) {
+      console.log(`⚠️ Slow request: ${req.method} ${req.path}`);
+    }
+  });
+  next();
+});
+
+// ⭐ ALL ROUTES
+app.use("/api/auth", authRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/documents", documentsRoutes);
+
+// ⭐ ENABLE EMPLOYEE EXPENSE DATA HERE
+app.use("/api/expenses", expenseRoutes);
+
+app.use("/api/policy", policyRoutes);
+app.use("/api/risk", riskRoutes);
+app.use("/api/trips", tripsRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/kpi", kpiRoutes);
+
+// Upload folder serving
+app.use(
+  "/uploads",
+  express.static("uploads", {
+    maxAge: "1d",
+    etag: true,
+  })
+);
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/", (req, res) => {
+  res.send("✅ Backend is running successfully!");
+});
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, error: "Endpoint not found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({ success: false, error: "Internal server error" });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
